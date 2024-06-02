@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace _1PasswordSSHAssistant.Data;
+namespace OPSSHAssistant.Data;
 
 public class Account
 {

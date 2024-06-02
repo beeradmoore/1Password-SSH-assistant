@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "1PasswordSSHAssistant", "1PasswordSSHAssistant\1PasswordSSHAssistant.csproj", "{2740D308-430A-4C1A-9C62-ED8E5DA988F6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPSSHAssistant", "OPSSHAssistant\OPSSHAssistant.csproj", "{2740D308-430A-4C1A-9C62-ED8E5DA988F6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

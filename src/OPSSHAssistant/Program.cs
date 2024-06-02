@@ -2,7 +2,7 @@
 
 using System.Diagnostics;
 using System.Text.Json;
-using _1PasswordSSHAssistant.Data;
+using OPSSHAssistant.Data;
 using CliWrap;
 using CliWrap.Buffered;
 using Spectre.Console;
