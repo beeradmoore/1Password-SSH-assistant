@@ -1,4 +1,8 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using CliWrap;
+using CliWrap.Buffered;
+using Spectre.Console;
 
 namespace OPSSHAssistant.Data;
 
@@ -30,4 +34,42 @@ public class Item
 
     [JsonPropertyName("additional_information")]
     public string AdditionalInformation { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string PublicKeyPath { get; set; } = string.Empty;
+
+    [JsonIgnore]
+    public string PublicKey { get; set; } = string.Empty;
+    
+
+    public string GetDisplayName()
+    {
+	    return $"{Title} ({Id})";
+    }
+
+    public async Task<bool> LoadPublicKeyAsync()
+    {	
+	    try
+	    {
+		    var result = await Cli.Wrap("op")
+			    .WithArguments($"item get {Id} --vault {Vault.Id} --fields \"public_key\" --format json --no-color")
+			    .ExecuteBufferedAsync();
+
+		    var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput);
+			
+		    if (publicKey is null || string.IsNullOrEmpty(publicKey.Value))
+		    {
+			    throw new Exception("Public key is null or empty.");
+		    }
+
+		    PublicKey = publicKey.Value;
+		    
+		    return true;
+	    }
+	    catch (Exception err)
+	    {
+		    AnsiConsole.MarkupLine($"[red]Error loading public key for {Title}: {err.Message}[/]");
+		    return false;
+	    }
+    }
 }
