@@ -8,7 +8,7 @@ using CliWrap.Buffered;
 using Spectre.Console;
 
 var prompt = new SelectionPrompt<string>()
-    .Title("This tool will use the 1Password CLI to list accounts. It will not scan for vaults or items until you explicitly select them. Are you want to continue?")
+    .Title("This tool will use the 1Password CLI to list accounts, vaults, and items. Are you want to continue?")
     .AddChoices(new[] { "Yes", "Quit" });
 
 var response = AnsiConsole.Prompt(prompt);
@@ -19,6 +19,7 @@ if (response == "Quit")
     Environment.Exit(0);
 }
 
+SelectAccount:
 
 var result = await Cli.Wrap("op")
     .WithArguments("account list --format json --no-color")
@@ -54,6 +55,7 @@ if (response == "Quit")
 
 var selectedAccount = accountsDictionary[response];
 
+SelectVault:
 
 result = await Cli.Wrap("op")
     .WithArguments($"vault list --account {selectedAccount.AccountUuid} --format json --no-color")
@@ -65,19 +67,57 @@ if (result.IsSuccess == false)
     Environment.Exit(1);
 }
 
-Console.WriteLine(result);
+var vaults = JsonSerializer.Deserialize<Vault[]>(result.StandardOutput);
+
+var vaultsDictionary = new Dictionary<string, Vault>();
+var vaultOptions = new List<string>();
+foreach (var vault in vaults)
+{
+    vaultsDictionary.Add(vault.GetDisplayName(), vault);
+}
+vaultOptions.AddRange(vaultsDictionary.Keys);
+vaultOptions.Add("Back");
+vaultOptions.Add("Quit");
+
+
+prompt = new SelectionPrompt<string>()
+    .Title("Please select your vault?")
+    .AddChoices(vaultOptions);
+
+
+response = AnsiConsole.Prompt(prompt);
+
+if (response == "Back")
+{
+    goto SelectAccount;
+}
+else if (response == "Quit")
+{
+    // Handle the quit logic here
+    Environment.Exit(0);
+}
+
+
+
+var selectedVault = vaultsDictionary[response];
+
+
+result = await Cli.Wrap("op")
+    .WithArguments($"item list --account {selectedAccount.AccountUuid} --vault {selectedVault.Id} --format json --no-color --categories \"SSH Key\"")
+    .ExecuteBufferedAsync();
+
+var items = JsonSerializer.Deserialize<Item[]>(result.StandardOutput);
+
+if (items.Length == 0)
+{
+    AnsiConsole.MarkupLine("[red]No SSH Key found in the selected vault[/]");
+    goto SelectVault;
+}
+
+
 
 Debugger.Break();
-/*
-var processStartInfo = new ProcessStartInfo();
-processStartInfo.FileName = "op";
-processStartInfo.Arguments = "account list --format json";
-processStartInfo.RedirectStandardOutput = true;
-var process = Process.Start(processStartInfo);
-process.WaitForExit();
-var output = process.StandardOutput.ReadToEnd();
-Debugger.Break();
-*/
+
 
 
 // Ask for the user's favorite fruits

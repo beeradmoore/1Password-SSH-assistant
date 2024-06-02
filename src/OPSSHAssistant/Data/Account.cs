@@ -20,5 +20,10 @@ public class Account
     {
         return $"{Email} ({Url})";
     }
+
+    public void SelectVault()
+    {
+        
+    }
 }
 
