@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CliWrap;
@@ -40,19 +41,18 @@ public class Item
 
     [JsonIgnore]
     public string PublicKey { get; set; } = string.Empty;
-    
 
     public string GetDisplayName()
     {
 	    return $"{Title} ({Id})";
     }
 
-    public async Task<bool> LoadPublicKeyAsync()
+    public async Task<bool> LoadPublicKeyAsync(Account selectedAccount)
     {	
 	    try
 	    {
 		    var result = await Cli.Wrap("op")
-			    .WithArguments($"item get {Id} --vault {Vault.Id} --fields \"public_key\" --format json --no-color")
+			    .WithArguments($"item get {Id} --vault {Vault.Id} --account {selectedAccount.AccountUuid} --fields \"public_key\" --format json --no-color")
 			    .ExecuteBufferedAsync();
 
 		    var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput);
@@ -68,6 +68,7 @@ public class Item
 	    }
 	    catch (Exception err)
 	    {
+		    Debugger.Break();
 		    AnsiConsole.MarkupLine($"[red]Error loading public key for {Title}: {err.Message}[/]");
 		    return false;
 	    }

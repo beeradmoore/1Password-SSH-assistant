@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -79,7 +80,7 @@ public class Vault
 				
 				foreach (var selectedItemObject in selectedItemObjects)
 				{
-					await selectedItemObject.LoadPublicKeyAsync();
+					await selectedItemObject.LoadPublicKeyAsync(selectedAccount);
 
 					var fileName = selectedItemObject.Title;
 					foreach (var invalidCharacter in invalidCharacters)
@@ -131,6 +132,7 @@ public class Vault
 								}
 								catch (Exception err)
 								{
+									Debugger.Break();
 									AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
 								}
 							}
@@ -188,6 +190,7 @@ public class Vault
 		}
 		catch (Exception err)
 		{
+			Debugger.Break();
 			AnsiConsole.MarkupLine($"[red]Error: {err.Message}[/]");
 			Environment.Exit(1);
 		}
