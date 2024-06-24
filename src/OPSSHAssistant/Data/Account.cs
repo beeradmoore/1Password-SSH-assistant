@@ -55,7 +55,7 @@ public class Account
                 var accounts = JsonSerializer.Deserialize<Account[]>(result.StandardOutput);
                 if (accounts is null || accounts.Length == 0)
                 {
-                    AnsiConsole.MarkupLine("[red]Error: No accounts found.[/]");
+                    AnsiConsole.MarkupLine("[red]Error: No accounts found. Did you enable 1Password CLI from within the 1Password desktop application?[/]");
                     Environment.Exit(0);
                 }
 
