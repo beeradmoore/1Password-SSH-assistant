@@ -19,7 +19,7 @@ public class Vault
 
 	[JsonPropertyName("content_version")]
 	public int ContentVersion { get; set; }
-    
+	
 	public string GetDisplayName()
 	{
 		return $"{Name} ({Id})";
@@ -98,6 +98,7 @@ public class Vault
 					}
 
 					var fullPath = Path.Combine(sshDirectory, fileName);
+					selectedItemObject.PublicKeyPath = fullPath;
 					if (File.Exists(fullPath))
 					{
 						var tempPublicKey = File.ReadAllText(fullPath);
@@ -113,7 +114,7 @@ public class Vault
 					else
 					{
 						AnsiConsole.MarkupLine($"[green]Export {fullPath}[/]");
-						selectedItemObject.PublicKeyPath = fullPath;
+						selectedItemObject.ShouldExport = true;
 						shouldAttemptExport = true;
 					}
 				}
@@ -125,7 +126,7 @@ public class Vault
 					{
 						foreach (var selectedItemObject in selectedItemObjects)
 						{
-							if (String.IsNullOrEmpty(selectedItemObject.PublicKeyPath) == false)
+							if (selectedItemObject.ShouldExport)
 							{
 								try
 								{
@@ -150,13 +151,6 @@ public class Vault
 				
 				foreach (var storedItemObject in selectedItemObjects)
 				{
-					/*
-					if (string.IsNullOrEmpty(storedItemObject.PublicKeyPath))
-					{
-						continue;
-					}
-					*/
-
 					agentTomlStringBuilder.AppendLine("[[ssh-keys]]");
 					agentTomlStringBuilder.AppendLine($"account = \"{selectedAccount.AccountUuid}\"");
 					agentTomlStringBuilder.AppendLine($"vault = \"{Name}\"");

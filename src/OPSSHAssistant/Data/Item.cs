@@ -42,6 +42,9 @@ public class Item
     [JsonIgnore]
     public string PublicKey { get; set; } = string.Empty;
 
+    [JsonIgnore]
+    public bool ShouldExport { get; set; } = false;
+
     public string GetDisplayName()
     {
 	    return $"{Title} ({Id})";
