@@ -167,7 +167,18 @@ public class Vault
 					sshConfigStringBuilder.AppendLine($"  User UPDATE_USERNAME_HERE");
 					sshConfigStringBuilder.AppendLine($"  PreferredAuthentications publickey");
 					sshConfigStringBuilder.AppendLine($"  IdentityFile \"{storedItemObject.PublicKeyPath}\"");
-					sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
+					if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+					{
+						sshConfigStringBuilder.AppendLine(@"  IdentityAgent ""\\.\pipe\openssh-ssh-agent""");
+					}
+					else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+					{
+						sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
+					}
+					else
+					{
+						sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/.1password/agent.sock\"");
+					}
 					sshConfigStringBuilder.AppendLine($"  IdentitiesOnly yes");
 					sshConfigStringBuilder.AppendLine();
 				}
