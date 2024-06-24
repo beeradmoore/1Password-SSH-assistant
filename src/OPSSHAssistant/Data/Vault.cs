@@ -200,8 +200,19 @@ public class Vault
 				
 				Console.WriteLine(agentTomlStringBuilder.ToString());
 				Console.WriteLine();
-				
-				Console.WriteLine("The following config belongs in ~/.ssh/config");
+				if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				{
+					var sshConfigPath = Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\.ssh\config");
+					Console.WriteLine($"The following config belongs in {sshConfigPath}");
+				}
+				else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				{
+					Console.WriteLine("The following config belongs in ~/.ssh/config");
+				}
+				else
+				{
+					Console.WriteLine("The following config belongs in ~/.ssh/config");
+				}
 				Console.WriteLine(sshConfigStringBuilder.ToString());
 				Console.WriteLine();
 
