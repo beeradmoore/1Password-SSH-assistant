@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -172,7 +173,20 @@ public class Vault
 				}
 				
 				Console.WriteLine();
-				Console.WriteLine("The following config belongs in ~/.config/1Password/ssh/agent.toml");
+				if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+				{
+					var tomlPath = Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\1Password\config\ssh\agent.toml");
+					Console.WriteLine($"The following config belongs in {tomlPath}");
+				}
+				else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+				{
+					Console.WriteLine("The following config belongs in ~/.config/1Password/ssh/agent.toml");
+				}
+				else
+				{
+					Console.WriteLine("The following config belongs in ~/.config/1Password/ssh/agent.toml");
+				}
+				
 				Console.WriteLine(agentTomlStringBuilder.ToString());
 				Console.WriteLine();
 				
