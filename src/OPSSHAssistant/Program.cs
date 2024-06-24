@@ -5,6 +5,16 @@ using OPSSHAssistant.Data;
 using CliWrap;
 using OPSSHAssistant;
 using Spectre.Console;
+using System.Runtime.InteropServices;
+
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false &&
+    RuntimeInformation.IsOSPlatform(OSPlatform.OSX) == false &&
+    RuntimeInformation.IsOSPlatform(OSPlatform.Linux) == false)
+{
+    Console.WriteLine("Error: Unsure where you are running this, but it only supports being run on Windows, macOS, and Linux.");
+    Environment.Exit(0);
+}
+
 
 try
 {
