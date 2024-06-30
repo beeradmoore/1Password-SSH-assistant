@@ -19,7 +19,6 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false &&
 try
 {
     var result = await Cli.Wrap("op")
-        .WithArguments("--help") // --version does not return a valid exit code, so using --help instead.
         .ExecuteAsync();
 }
 catch (Exception err)
