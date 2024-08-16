@@ -26,7 +26,7 @@ public class OPManager
         SSHConfigPathExists = Directory.Exists(SSHConfigPath);
     }
 
-    public async Task<bool> CheckFor1PasswordCLI()
+    public async Task<bool> CheckFor1PasswordCLIAsync()
     {
         try
         {
