@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace OPSSHAssistant.Data;
+namespace OPSSHAssistant.Core.Data;
 
 public class PublicKey
 {
