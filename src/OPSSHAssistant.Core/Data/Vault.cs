@@ -17,4 +17,9 @@ public class Vault
 	{
 		return $"{Name} ({Id})";
 	}
+
+	public override string ToString()
+	{
+		return GetDisplayName();
+	}
 }
