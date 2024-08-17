@@ -129,8 +129,20 @@ public class OPManager
 	    }
     }
 
-    public async Task<List<Item>?> LoadItemsAsync(Account account, Vault vault)
+    public async Task<List<Item>?> LoadItemsAsync(Account? account, Vault? vault)
     {
+	    if (account is null)
+	    {
+		    LastError = "Account not found.";
+		    return null;
+	    }
+	    
+	    if (vault is null)
+	    {
+		    LastError = "Vault not found.";
+		    return null;
+	    }
+	    
 	    try
 	    {
 		    var result = await Cli.Wrap("op")

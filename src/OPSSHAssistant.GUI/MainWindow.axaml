@@ -6,22 +6,55 @@
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="OPSSHAssistant.GUI.MainWindow"
         x:DataType="local:MainWindowModel"
-        Title="OPSSHAssistant">
-    <Grid RowDefinitions="Auto,4,Auto,16,*,16,Auto" ColumnDefinitions="*,16,*" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="16">
-        <TextBlock Grid.Row="0" Grid.Column="0" Text="Account:" />
-        <ComboBox Grid.Row="2" Grid.Column="0" PlaceholderText="{Binding AccountComboBoxPlaceholder}" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" IsEnabled="{Binding !!Accounts.Count}" HorizontalAlignment="Stretch" />
-        <TextBlock Grid.Row="0" Grid.Column="2" Text="Vault:" />
-        <ComboBox Grid.Row="2" Grid.Column="2" PlaceholderText="{Binding VaultComboBoxPlaceholder}" ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault}" IsEnabled="{Binding !!Vaults.Count}" HorizontalAlignment="Stretch" />
+        Title="1Password SSH Assistant">
+    
+    <Grid RowDefinitions="Auto,16,Auto,16,*,16,Auto" Margin="16">
         
-        <TextBlock Grid.Row="4" Grid.Column="0" Text="Loading items..." IsVisible="{Binding IsLoadingItems}" />
-        <ItemsRepeater Grid.Row="4" Grid.Column="0"  ItemsSource="{Binding Items}" IsVisible="{Binding !IsLoadingItems}" >
-            <ItemsRepeater.ItemTemplate>
-                <DataTemplate x:DataType="local:CheckboxItem">
-                    <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Item.Title}" />
-                </DataTemplate>
-            </ItemsRepeater.ItemTemplate>
-        </ItemsRepeater>
+        <StackPanel x:Name="AccountStackPanel" Grid.Row="0" Spacing="4">
+            <TextBlock Text="Account:" FontWeight="Bold" />
+            <ComboBox PlaceholderText="{Binding AccountComboBoxPlaceholder}" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" IsEnabled="{Binding !!Accounts.Count}" HorizontalAlignment="Stretch" />
+        </StackPanel>
         
-        <Button Grid.Row="6" Grid.Column="0" Content="Generate" Command="{Binding GenerateCommand}" IsVisible="{Binding !!Items.Count}" />
+        <StackPanel x:Name="VaultStackPanel" Grid.Row="2" Spacing="4" Opacity="0">
+            <StackPanel.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </StackPanel.Transitions>
+            <TextBlock Text="Vault:" FontWeight="Bold" />
+            <ComboBox PlaceholderText="{Binding VaultComboBoxPlaceholder}" ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault}" IsEnabled="{Binding !!Vaults.Count}" HorizontalAlignment="Stretch" />
+        </StackPanel>
+        
+        <!-- this has to be a grid otherwise it breaks scrolling of the items repeater -->
+        <Grid x:Name="ItemsStackPanel" RowDefinitions="Auto,4,*" Grid.Row="4" Opacity="0">
+            <Grid.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Grid.Transitions>
+            
+            <TextBlock Grid.Row="0" Text="SSH keys:" FontWeight="Bold" />
+            <TextBlock Grid.Row="2" Text="Loading SSH keys..." IsVisible="{Binding IsLoadingItems}" />
+            <TextBlock Grid.Row="2" Text="No SSH keys found">
+                <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}" x:DataType="local:MainWindowModel">
+                            <Binding Path="!IsLoadingItems" />
+                            <Binding Path="!Items.Count" />
+                        </MultiBinding>
+                </TextBlock.IsVisible>
+            </TextBlock>
+            <ScrollViewer Grid.Row="2">
+                <ItemsRepeater ItemsSource="{Binding Items}" IsVisible="{Binding !IsLoadingItems}">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="local:CheckboxItem">
+                            <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Item.Title}" />
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
+        </Grid>
+        
+        <Button Grid.Row="6" Content="Generate public keys, ssh config, and agent toml file" HorizontalAlignment="Stretch" Command="{Binding GenerateCommand}" IsVisible="{Binding !!Items.Count}" />
+       
     </Grid>
 </Window>

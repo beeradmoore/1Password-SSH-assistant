@@ -23,7 +23,8 @@ namespace OPSSHAssistant.GUI;
 
 public partial class MainWindowModel : ObservableObject
 {
-    WeakReference<MainWindow> weakMainWindow;
+    // Not bothering to make this weak, its the only page in the entire app.
+    MainWindow mainWindow;
     OPManager opManager;
 
     public ObservableCollection<Account> Accounts { get; set; } = new ObservableCollection<Account>();
@@ -47,7 +48,7 @@ public partial class MainWindowModel : ObservableObject
     
     public MainWindowModel(MainWindow mainWindow)
     {
-        weakMainWindow = new WeakReference<MainWindow>(mainWindow);
+        this.mainWindow = mainWindow;
         opManager = new OPManager();
     }
 
@@ -64,7 +65,7 @@ public partial class MainWindowModel : ObservableObject
                         new ButtonDefinition { Name = "Quit", }
                     },
                     //ContentTitle = "",
-                    ContentMessage = "This tool will use the 1Password CLI to list accounts, vaults, and items.\nYou will be prompted to authorise access multiple times in this process.\n\nAre you sure you want to continue?",
+                    ContentMessage = "This tool will use the 1Password CLI to list accounts, vaults, and items. You will be prompted to authorise access multiple times in this process.\n\nAre you sure you want to continue?",
                     Icon = Icon.Question,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     CanResize = false,
@@ -74,38 +75,36 @@ public partial class MainWindowModel : ObservableObject
                     ShowInCenter = true,
                     Topmost = false,
                 });
-            if (weakMainWindow.TryGetTarget(out MainWindow? mainWindow))
+            
+            var messageBoxResult = await messageBox.ShowWindowDialogAsync(mainWindow);
+            if (messageBoxResult == "Quit")
             {
-                var messageBoxResult = await messageBox.ShowWindowDialogAsync(mainWindow);
-                if (messageBoxResult == "Quit")
-                {
-                    Environment.Exit(1);
-                    return;
-                }
+                Environment.Exit(1);
+                return;
+            }
 
-                if (opManager.SSHConfigPathExists == false)
-                {
-                    var warningMessageBox = MessageBoxManager.GetMessageBoxStandard("Warning", $"SSH directory ({opManager.SSHConfigPath}) does not exist. SSH pathing needs to be configured for public key generation to work.", ButtonEnum.Ok, Icon.Warning);
-                    await warningMessageBox.ShowWindowDialogAsync(mainWindow);
-                }
+            if (opManager.SSHConfigPathExists == false)
+            {
+                var warningMessageBox = MessageBoxManager.GetMessageBoxStandard("Warning", $"SSH directory ({opManager.SSHConfigPath}) does not exist. SSH pathing needs to be configured for public key generation to work.", ButtonEnum.Ok, Icon.Warning);
+                await warningMessageBox.ShowWindowDialogAsync(mainWindow);
+            }
 
-                AccountComboBoxPlaceholder = "Loading accounts...";
-                mainWindow.IsEnabled = false;
-                var loadedAccounts = await opManager.LoadAccountsAsync();
-                mainWindow.IsEnabled = true;
-                AccountComboBoxPlaceholder = "Select an account";
-                
-                if (loadedAccounts is null || loadedAccounts.Count == 0)
-                {
-                    var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list accounts.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                    await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                    return;
-                }
-                
-                foreach (var account in loadedAccounts)
-                {
-                    Accounts.Add(account);
-                }
+            AccountComboBoxPlaceholder = "Loading accounts...";
+            mainWindow.IsEnabled = false;
+            var loadedAccounts = await opManager.LoadAccountsAsync();
+            mainWindow.IsEnabled = true;
+            AccountComboBoxPlaceholder = "Select an account";
+            
+            if (loadedAccounts is null || loadedAccounts.Count == 0)
+            {
+                var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list accounts.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+                await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+                return;
+            }
+            
+            foreach (var account in loadedAccounts)
+            {
+                Accounts.Add(account);
             }
         }
         else
@@ -156,11 +155,9 @@ public partial class MainWindowModel : ObservableObject
                         })
                     }
                 });
-            if (weakMainWindow.TryGetTarget(out MainWindow? mainWindow))
-            {
-                await messageBox.ShowWindowDialogAsync(mainWindow);
-                Environment.Exit(1);
-            }
+            
+            await messageBox.ShowWindowDialogAsync(mainWindow);
+            Environment.Exit(1);
         }
     }
 
@@ -171,29 +168,31 @@ public partial class MainWindowModel : ObservableObject
         if (e.PropertyName == nameof(SelectedAccount))
         {
             SelectedVault = null;
-            Vaults.Clear();
-            
-            if (SelectedAccount is not null)
-            {
-                if (weakMainWindow.TryGetTarget(out MainWindow? mainWindow))
-                {
-                    VaultComboBoxPlaceholder = "Loading vaults...";
-                    mainWindow.IsEnabled = false;
-                    var loadedVaults = await opManager.LoadVaultsAsync(SelectedAccount);
-                    mainWindow.IsEnabled = true;
-                    VaultComboBoxPlaceholder = "Select a vault";
-                
-                    if (loadedVaults is null || loadedVaults.Count == 0)
-                    {
-                        var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list vaults.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                        await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                        return;
-                    }
 
-                    foreach (var vault in loadedVaults)
-                    {
-                        Vaults.Add(vault);
-                    }
+            if (SelectedAccount is null)
+            {
+                // ???
+            }
+            else 
+            {
+                mainWindow.VaultStackPanel.Opacity = 1;
+                VaultComboBoxPlaceholder = "Loading vaults...";
+                mainWindow.IsEnabled = false;
+                var loadedVaults = await opManager.LoadVaultsAsync(SelectedAccount);
+                mainWindow.IsEnabled = true;
+                VaultComboBoxPlaceholder = "Select a vault";
+            
+                if (loadedVaults is null || loadedVaults.Count == 0)
+                {
+                    VaultComboBoxPlaceholder = "No vaults found";
+                    var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list vaults.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+                    await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+                    return;
+                }
+
+                foreach (var vault in loadedVaults)
+                {
+                    Vaults.Add(vault);
                 }
             }
         }
@@ -202,136 +201,118 @@ public partial class MainWindowModel : ObservableObject
             if (SelectedVault is null)
             {
                 Items.Clear();
+                Vaults.Clear();
+                mainWindow.VaultStackPanel.Opacity = 0;
+                mainWindow.ItemsStackPanel.Opacity = 0;
             }
             else
             {
-                if (SelectedAccount is null)
+                mainWindow.ItemsStackPanel.Opacity = 1;
+                mainWindow.IsEnabled = false;
+                IsLoadingItems = true;
+                Items.Clear();
+                var loadedItems = await opManager.LoadItemsAsync(SelectedAccount, SelectedVault);
+                IsLoadingItems = false;
+                mainWindow.IsEnabled = true;
+
+                if (loadedItems is null)
                 {
+                    var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list items.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+                    await errorMessageBox.ShowWindowDialogAsync(mainWindow);
                     return;
                 }
                 
-                if (weakMainWindow.TryGetTarget(out MainWindow? mainWindow))
+                foreach (var loadedItem in loadedItems)
                 {
-                    mainWindow.IsEnabled = false;
-                    IsLoadingItems = true;
-                    var loadedItems = await opManager.LoadItemsAsync(SelectedAccount, SelectedVault);
-                    IsLoadingItems = false;
-                    mainWindow.IsEnabled = true;
-
-                    if (loadedItems is null)
-                    {
-                        var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list items.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                        await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                        return;
-                    }
-
-                    if (loadedItems.Count == 0)
-                    {
-                        var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"No SSH keys found.", ButtonEnum.Ok, Icon.Error);
-                        await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                        return;
-                    }
-                    
-                    Items.Clear();
-
-                    foreach (var loadedItem in loadedItems)
-                    {
-                        Items.Add(new CheckboxItem(loadedItem));
-                    }
-                    
-                    
+                    Items.Add(new CheckboxItem(loadedItem));
                 }
             }
         }
     }
 
+
     [RelayCommand(AllowConcurrentExecutions = false)]
     async Task GenerateAsync()
     {
-        if (weakMainWindow.TryGetTarget(out MainWindow? mainWindow))
+        var selectedItemObjects = new List<Item>();
+        foreach (var item in Items)
         {
-            var selectedItemObjects = new List<Item>();
-            foreach (var item in Items)
+            if (item.IsChecked)
             {
-                if (item.IsChecked)
+                selectedItemObjects.Add(item.Item);
+            }
+        }
+        var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
+
+        if (anyPublicKeysNeedExport is null)
+        {
+            //AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
+            //AnsiConsole.WriteLine(opManager.LastError);
+            //Environment.Exit(1);
+        }
+
+        if (anyPublicKeysNeedExport == true)
+        {
+            var publicKeystoExportStringBuilder = new StringBuilder();
+            
+            foreach (var selectedItemObject in selectedItemObjects)
+            {
+                if (selectedItemObject.NeedsExport)
                 {
-                    selectedItemObjects.Add(item.Item);
+                    publicKeystoExportStringBuilder.AppendLine($"{selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
                 }
             }
-            var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
+            
+            
+            var exportPublicKeysMessageBox = MessageBoxManager.GetMessageBoxStandard("Export public keys?", publicKeystoExportStringBuilder.ToString(), ButtonEnum.YesNo, Icon.Question);
+            var exportPubilcKeysResponse = await exportPublicKeysMessageBox.ShowWindowDialogAsync(mainWindow);
 
-            if (anyPublicKeysNeedExport is null)
+            if (exportPubilcKeysResponse == ButtonResult.Yes)
             {
-                //AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
-                //AnsiConsole.WriteLine(opManager.LastError);
-                //Environment.Exit(1);
-            }
-
-            if (anyPublicKeysNeedExport == true)
-            {
-                var publicKeystoExportStringBuilder = new StringBuilder();
-                
                 foreach (var selectedItemObject in selectedItemObjects)
                 {
                     if (selectedItemObject.NeedsExport)
                     {
-                        publicKeystoExportStringBuilder.AppendLine($"{selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
-                    }
-                }
-                
-                
-                var exportPublicKeysMessageBox = MessageBoxManager.GetMessageBoxStandard("Export public keys?", publicKeystoExportStringBuilder.ToString(), ButtonEnum.YesNo, Icon.Question);
-                var exportPubilcKeysResponse = await exportPublicKeysMessageBox.ShowWindowDialogAsync(mainWindow);
-
-                if (exportPubilcKeysResponse == ButtonResult.Yes)
-                {
-                    foreach (var selectedItemObject in selectedItemObjects)
-                    {
-                        if (selectedItemObject.NeedsExport)
+                        try
                         {
-                            try
-                            {
-                                File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
-                            }
-                            catch (Exception err)
-                            {
-                                Debugger.Break();
-                                //AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
-                            }
+                            File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
+                        }
+                        catch (Exception err)
+                        {
+                            Debugger.Break();
+                            //AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
                         }
                     }
                 }
             }
-            else
-            {
-                //AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
-            }
-            
-            
-            var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
-
-            var outputStringBuilder = new StringBuilder();
-            outputStringBuilder.AppendLine("\n\n");
-            outputStringBuilder.AppendLine("The following config needs to appended to:");
-            outputStringBuilder.AppendLine(opManager.GetSSHConfigPath());
-            outputStringBuilder.AppendLine();
-            outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
-            outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
-            outputStringBuilder.AppendLine("\n");
-            outputStringBuilder.AppendLine(sshConfig);
-            outputStringBuilder.AppendLine("\n\n");
-
-            
-            var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
-
-            outputStringBuilder.AppendLine();
-            outputStringBuilder.AppendLine("The following config needs to appended to:");
-            outputStringBuilder.AppendLine(opManager.GetAgentTomlPath());
-            outputStringBuilder.AppendLine("\n\n");
-            outputStringBuilder.AppendLine(agentToml);
-            outputStringBuilder.AppendLine("\n\n");
-
-
         }
+        else
+        {
+            //AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
+        }
+        
+        
+        var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
+
+        var outputStringBuilder = new StringBuilder();
+        outputStringBuilder.AppendLine("\n\n");
+        outputStringBuilder.AppendLine("The following config needs to appended to:");
+        outputStringBuilder.AppendLine(opManager.GetSSHConfigPath());
+        outputStringBuilder.AppendLine();
+        outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
+        outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
+        outputStringBuilder.AppendLine("\n");
+        outputStringBuilder.AppendLine(sshConfig);
+        outputStringBuilder.AppendLine("\n\n");
+
+        
+        var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
+
+        outputStringBuilder.AppendLine();
+        outputStringBuilder.AppendLine("The following config needs to appended to:");
+        outputStringBuilder.AppendLine(opManager.GetAgentTomlPath());
+        outputStringBuilder.AppendLine("\n\n");
+        outputStringBuilder.AppendLine(agentToml);
+        outputStringBuilder.AppendLine("\n\n");
     }
 }
