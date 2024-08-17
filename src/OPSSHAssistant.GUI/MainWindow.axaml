@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:OPSSHAssistant.GUI"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="OPSSHAssistant.GUI.MainWindow"
+        x:DataType="local:MainWindowModel"
+        Title="OPSSHAssistant">
+    <Grid RowDefinitions="Auto,4,Auto,16,*,16,Auto" ColumnDefinitions="*,16,*" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="16">
+        <TextBlock Grid.Row="0" Grid.Column="0" Text="Account:" />
+        <ComboBox Grid.Row="2" Grid.Column="0" PlaceholderText="{Binding AccountComboBoxPlaceholder}" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" IsEnabled="{Binding !!Accounts.Count}" HorizontalAlignment="Stretch" />
+        <TextBlock Grid.Row="0" Grid.Column="2" Text="Vault:" />
+        <ComboBox Grid.Row="2" Grid.Column="2" PlaceholderText="{Binding VaultComboBoxPlaceholder}" ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault}" IsEnabled="{Binding !!Vaults.Count}" HorizontalAlignment="Stretch" />
+        
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Loading items..." IsVisible="{Binding IsLoadingItems}" />
+        <ItemsRepeater Grid.Row="4" Grid.Column="0"  ItemsSource="{Binding Items}" IsVisible="{Binding !IsLoadingItems}" >
+            <ItemsRepeater.ItemTemplate>
+                <DataTemplate x:DataType="local:CheckboxItem">
+                    <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Item.Title}" />
+                </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+        
+        <Button Grid.Row="6" Grid.Column="0" Content="Generate" Command="{Binding GenerateCommand}" IsVisible="{Binding !!Items.Count}" />
+    </Grid>
+</Window>
