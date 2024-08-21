@@ -45,6 +45,9 @@ public partial class MainWindowModel : ObservableObject
 
     [ObservableProperty]
     bool isLoadingItems = false;
+
+    [ObservableProperty]
+    bool atGenerationStage = false;
     
     public MainWindowModel(MainWindow mainWindow)
     {
@@ -234,6 +237,11 @@ public partial class MainWindowModel : ObservableObject
     [RelayCommand(AllowConcurrentExecutions = false)]
     async Task GenerateAsync()
     {
+        if (SelectedAccount is null || SelectedVault is null)
+        {
+            return;
+        }
+        
         var selectedItemObjects = new List<Item>();
         foreach (var item in Items)
         {
@@ -242,13 +250,24 @@ public partial class MainWindowModel : ObservableObject
                 selectedItemObjects.Add(item.Item);
             }
         }
+
+        if (selectedItemObjects.Count == 0)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Please select some items before continuing.", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            return;
+        }
+
+        AtGenerationStage = true;
+        
         var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
 
         if (anyPublicKeysNeedExport is null)
         {
-            //AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
-            //AnsiConsole.WriteLine(opManager.LastError);
-            //Environment.Exit(1);
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could determine public keys to export.\n{opManager.LastError}.", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            AtGenerationStage = false;
+            return;
         }
 
         if (anyPublicKeysNeedExport == true)
