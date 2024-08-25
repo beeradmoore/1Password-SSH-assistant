@@ -4,9 +4,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using AsyncAwaitBestPractices;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using CliWrap;
@@ -26,6 +28,37 @@ public partial class MainWindowModel : ObservableObject
     // Not bothering to make this weak, its the only page in the entire app.
     MainWindow mainWindow;
     OPManager opManager;
+    PreparedExport? preparedExport;
+
+    [ObservableProperty]
+    bool stage1Selected = false;
+        
+    [ObservableProperty]
+    bool stage1Enabled = false;
+    
+    [ObservableProperty]
+    bool stage2Selected = false;
+        
+    [ObservableProperty]
+    bool stage2Enabled = false;
+    
+    [ObservableProperty]
+    bool stage3Selected = false;
+        
+    [ObservableProperty]
+    bool stage3Enabled = false;
+    
+    [ObservableProperty]
+    bool stage4Selected = false;
+        
+    [ObservableProperty]
+    bool stage4Enabled = false;
+    
+    [ObservableProperty]
+    bool stage5Selected = false;
+        
+    [ObservableProperty]
+    bool stage5Enabled = false;
 
     public ObservableCollection<Account> Accounts { get; set; } = new ObservableCollection<Account>();
     public ObservableCollection<Vault> Vaults { get; set; } = new ObservableCollection<Vault>();
@@ -36,18 +69,24 @@ public partial class MainWindowModel : ObservableObject
 
     [ObservableProperty]
     Vault? selectedVault = null;
+    
+    [ObservableProperty]
+    bool isLoading = false;
 
     [ObservableProperty]
-    string accountComboBoxPlaceholder = string.Empty;
+    string loadingText = string.Empty;
+    
+    [ObservableProperty]
+    bool isError = false;
 
     [ObservableProperty]
-    string vaultComboBoxPlaceholder = string.Empty;
+    string errorText = "An unknown error occured";
 
     [ObservableProperty]
-    bool isLoadingItems = false;
+    string exportPreviewText = string.Empty;
 
     [ObservableProperty]
-    bool atGenerationStage = false;
+    string exportSummaryText = string.Empty;
     
     public MainWindowModel(MainWindow mainWindow)
     {
@@ -56,7 +95,7 @@ public partial class MainWindowModel : ObservableObject
     }
 
     public async Task InitialLoadAsync()
-    {   
+    {
         if (await opManager.CheckFor1PasswordCLIAsync())
         {
             var messageBox = MessageBoxManager.GetMessageBoxCustom(
@@ -86,29 +125,13 @@ public partial class MainWindowModel : ObservableObject
                 return;
             }
 
-            if (opManager.SSHConfigPathExists == false)
+            if (Directory.Exists(opManager.GetSSHPath()) == false)
             {
-                var warningMessageBox = MessageBoxManager.GetMessageBoxStandard("Warning", $"SSH directory ({opManager.SSHConfigPath}) does not exist. SSH pathing needs to be configured for public key generation to work.", ButtonEnum.Ok, Icon.Warning);
+                var warningMessageBox = MessageBoxManager.GetMessageBoxStandard("Warning", $"SSH directory ({opManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.", ButtonEnum.Ok, Icon.Warning);
                 await warningMessageBox.ShowWindowDialogAsync(mainWindow);
             }
 
-            AccountComboBoxPlaceholder = "Loading accounts...";
-            mainWindow.IsEnabled = false;
-            var loadedAccounts = await opManager.LoadAccountsAsync();
-            mainWindow.IsEnabled = true;
-            AccountComboBoxPlaceholder = "Select an account";
-            
-            if (loadedAccounts is null || loadedAccounts.Count == 0)
-            {
-                var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list accounts.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                return;
-            }
-            
-            foreach (var account in loadedAccounts)
-            {
-                Accounts.Add(account);
-            }
+            await GoToStage1();
         }
         else
         {
@@ -164,7 +187,7 @@ public partial class MainWindowModel : ObservableObject
         }
     }
 
-    protected override async void OnPropertyChanged(PropertyChangedEventArgs e)
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
 
@@ -176,66 +199,161 @@ public partial class MainWindowModel : ObservableObject
             {
                 // ???
             }
-            else 
+            else
             {
-                mainWindow.VaultStackPanel.Opacity = 1;
-                VaultComboBoxPlaceholder = "Loading vaults...";
-                mainWindow.IsEnabled = false;
-                var loadedVaults = await opManager.LoadVaultsAsync(SelectedAccount);
-                mainWindow.IsEnabled = true;
-                VaultComboBoxPlaceholder = "Select a vault";
-            
-                if (loadedVaults is null || loadedVaults.Count == 0)
-                {
-                    VaultComboBoxPlaceholder = "No vaults found";
-                    var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list vaults.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                    await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                    return;
-                }
-
-                foreach (var vault in loadedVaults)
-                {
-                    Vaults.Add(vault);
-                }
+                GoToStage2().SafeFireAndForget();
             }
         }
         else if (e.PropertyName == nameof(SelectedVault))
         {
             if (SelectedVault is null)
             {
-                Items.Clear();
-                Vaults.Clear();
-                mainWindow.VaultStackPanel.Opacity = 0;
-                mainWindow.ItemsStackPanel.Opacity = 0;
+                // ???
             }
             else
             {
-                mainWindow.ItemsStackPanel.Opacity = 1;
-                mainWindow.IsEnabled = false;
-                IsLoadingItems = true;
-                Items.Clear();
-                var loadedItems = await opManager.LoadItemsAsync(SelectedAccount, SelectedVault);
-                IsLoadingItems = false;
-                mainWindow.IsEnabled = true;
-
-                if (loadedItems is null)
-                {
-                    var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list items.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
-                    await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-                    return;
-                }
-                
-                foreach (var loadedItem in loadedItems)
-                {
-                    Items.Add(new CheckboxItem(loadedItem));
-                }
+                GoToStage3().SafeFireAndForget();
             }
         }
     }
 
 
-    [RelayCommand(AllowConcurrentExecutions = false)]
-    async Task GenerateAsync()
+    void UpdateStageButtons(int stageNumber)
+    {
+        Stage5Enabled = (stageNumber >= 5);
+        Stage5Selected = (stageNumber == 5);
+
+        Stage4Enabled = (stageNumber >= 4);
+        Stage4Selected = (stageNumber == 4);
+
+        Stage3Enabled = (stageNumber >= 3);
+        Stage3Selected = (stageNumber == 3);
+
+        Stage2Enabled = (stageNumber >= 2);
+        Stage2Selected = (stageNumber == 2);
+
+        Stage1Enabled = (stageNumber >= 1);
+        Stage1Selected = (stageNumber == 1);
+    }
+
+    void ResetError()
+    {
+        IsError = false;
+        ErrorText = string.Empty;
+    }
+    
+    async Task GoToStage1()
+    {
+        UpdateStageButtons(1);
+        
+        Accounts.Clear();
+        Vaults.Clear();
+
+        SelectedAccount = null;
+        SelectedVault = null;
+
+        ResetError();
+        LoadingText = "Loading accounts...";
+        IsLoading = true;
+        var loadedAccounts = await opManager.LoadAccountsAsync();
+        //AccountComboBoxPlaceholder = "Select an account";
+        IsLoading = false;
+        
+        if (loadedAccounts is null || loadedAccounts.Count == 0)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list accounts.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            
+            IsError = true;
+            ErrorText = "Could not list accounts";
+            
+            return;
+        }
+
+        foreach (var account in loadedAccounts)
+        {
+            Accounts.Add(account);
+        }
+    }
+    
+    async Task GoToStage2()
+    {
+        if (SelectedAccount is null)
+        {
+            return;
+        }
+
+        UpdateStageButtons(2);
+
+        Vaults.Clear();
+        
+        
+        ResetError();
+        LoadingText = "Loading vaults...";
+        IsLoading = true;
+        var loadedVaults = await opManager.LoadVaultsAsync(SelectedAccount);
+        IsLoading = false;
+        
+        if (loadedVaults is null || loadedVaults.Count == 0)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list vaults.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            
+            IsError = true;
+            ErrorText = "No vaults found";
+            
+            return;
+        }
+
+        foreach (var vault in loadedVaults)
+        {
+            Vaults.Add(vault);
+        }
+    }
+    
+    async Task GoToStage3()
+    {
+        if (SelectedVault is null || SelectedAccount is null)
+        {
+            return;
+        }
+        
+        UpdateStageButtons(3);
+        
+        
+        ResetError();
+        //mainWindow.ItemsStackPanel.Opacity = 1;
+        LoadingText = "Loading items...";
+        IsLoading = true;
+        Items.Clear();
+        var loadedItems = await opManager.LoadItemsAsync(SelectedAccount, SelectedVault);
+        IsLoading = false;
+
+        if (loadedItems is null)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could not list items.\n{opManager.LastError}", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+
+            ErrorText = "Could not list items";
+            IsError = true;
+            
+            return;
+        }
+
+        if (loadedItems.Any() == false)
+        {
+            ErrorText = "No SSH keys found in vault. Please select a different vault";
+            IsError = true;
+            return;
+        }
+
+        foreach (var loadedItem in loadedItems)
+        {
+            Items.Add(new CheckboxItem(loadedItem));
+        }
+    }
+    
+    async Task GoToStage4()
     {
         if (SelectedAccount is null || SelectedVault is null)
         {
@@ -253,85 +371,243 @@ public partial class MainWindowModel : ObservableObject
 
         if (selectedItemObjects.Count == 0)
         {
-            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Please select some items before continuing.", ButtonEnum.Ok, Icon.Error);
-            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
             return;
         }
-
-        AtGenerationStage = true;
         
-        var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
+        UpdateStageButtons(4);
 
-        if (anyPublicKeysNeedExport is null)
+        ExportPreviewText = string.Empty;
+
+        ResetError();
+        LoadingText = "Generating output...";
+        IsLoading = true;
+        preparedExport = null;
+        preparedExport = await opManager.PrepareExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
+        
+        if (preparedExport.Success == false)
         {
-            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Could determine public keys to export.\n{opManager.LastError}.", ButtonEnum.Ok, Icon.Error);
+            IsLoading = false;
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"{preparedExport.ErrorMessage}.\n{preparedExport.ErrorMessageDetails}.", ButtonEnum.Ok, Icon.Error);
             await errorMessageBox.ShowWindowDialogAsync(mainWindow);
-            AtGenerationStage = false;
+
+            IsError = true;
+            ErrorText = preparedExport.ErrorMessage;
             return;
         }
-
-        if (anyPublicKeysNeedExport == true)
+        
+        var stringBuilder = new StringBuilder();
+        stringBuilder.AppendLine("IMPORTANT: 1Password SSH Assistant will append the below configs even if the new changes are already present in their respective config files. If you run an export on the same items multiple times you may need to manually repair your config files.");
+        stringBuilder.AppendLine();
+        if (preparedExport.PublicKeysToExport.Any())
         {
-            var publicKeystoExportStringBuilder = new StringBuilder();
-            
-            foreach (var selectedItemObject in selectedItemObjects)
+            stringBuilder.AppendLine("The following public keys need to be exported:");
+            foreach (var selectedItemObject in preparedExport.PublicKeysToExport)
             {
-                if (selectedItemObject.NeedsExport)
-                {
-                    publicKeystoExportStringBuilder.AppendLine($"{selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
-                }
+                stringBuilder.AppendLine($"- {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
             }
-            
-            
-            var exportPublicKeysMessageBox = MessageBoxManager.GetMessageBoxStandard("Export public keys?", publicKeystoExportStringBuilder.ToString(), ButtonEnum.YesNo, Icon.Question);
-            var exportPubilcKeysResponse = await exportPublicKeysMessageBox.ShowWindowDialogAsync(mainWindow);
-
-            if (exportPubilcKeysResponse == ButtonResult.Yes)
-            {
-                foreach (var selectedItemObject in selectedItemObjects)
-                {
-                    if (selectedItemObject.NeedsExport)
-                    {
-                        try
-                        {
-                            File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
-                        }
-                        catch (Exception err)
-                        {
-                            Debugger.Break();
-                            //AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
-                        }
-                    }
-                }
-            }
+            stringBuilder.AppendLine();
         }
         else
         {
-            //AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
+            stringBuilder.AppendLine("No public keys need to be exported.");
+        }
+
+        stringBuilder.AppendLine("\n");
+
+        if (preparedExport.SSHConfigToBeCreated)
+        {
+            stringBuilder.AppendLine("The following config will be created:");
+        }
+        else
+        {
+            stringBuilder.AppendLine("The following config will be appended to:");
+        }
+        stringBuilder.AppendLine(opManager.GetSSHConfigPath());
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
+        stringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
+        stringBuilder.AppendLine("\n");
+        stringBuilder.AppendLine(preparedExport.SSHConfigToAppend);
+        stringBuilder.AppendLine("\n");
+
+        if (preparedExport.AgentTomlToBeCreated)
+        {
+            stringBuilder.AppendLine("The following config will be created:");
+        }
+        else
+        {
+            stringBuilder.AppendLine("The following config will be appended to:");
+        }
+        stringBuilder.AppendLine(opManager.GetAgentTomlPath());
+        stringBuilder.AppendLine("\n");
+        stringBuilder.AppendLine(preparedExport.AgentTomlToAppend);
+        
+        IsLoading = false;
+        ExportPreviewText = stringBuilder.ToString();
+    }
+    
+    async Task GoToStage5()
+    {
+        if (preparedExport is null)
+        {
+            return;
         }
         
+        if (preparedExport.Success == false)
+        {
+            return;
+        }
         
-        var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
+        UpdateStageButtons(5);
+        ExportSummaryText = string.Empty;
+        ResetError();
+        LoadingText = "Exporting...";
+        IsLoading = true;
+        var exportResult = await opManager.PerformExportAsync(preparedExport);
 
-        var outputStringBuilder = new StringBuilder();
-        outputStringBuilder.AppendLine("\n\n");
-        outputStringBuilder.AppendLine("The following config needs to appended to:");
-        outputStringBuilder.AppendLine(opManager.GetSSHConfigPath());
-        outputStringBuilder.AppendLine();
-        outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
-        outputStringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
-        outputStringBuilder.AppendLine("\n");
-        outputStringBuilder.AppendLine(sshConfig);
-        outputStringBuilder.AppendLine("\n\n");
-
+        var stringBuilder = new StringBuilder();
         
-        var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
-
-        outputStringBuilder.AppendLine();
-        outputStringBuilder.AppendLine("The following config needs to appended to:");
-        outputStringBuilder.AppendLine(opManager.GetAgentTomlPath());
-        outputStringBuilder.AppendLine("\n\n");
-        outputStringBuilder.AppendLine(agentToml);
-        outputStringBuilder.AppendLine("\n\n");
+        if (exportResult.PublicKeyGenerationSuccess)
+        {
+            stringBuilder.AppendLine("Public keys exported successfully.");
+        }
+        else
+        {
+            stringBuilder.AppendLine("Public keys failed to export.");
+            stringBuilder.AppendLine(exportResult.PublicKeyGenerationSummary);
+        }
+        
+        stringBuilder.AppendLine();
+        
+        if (exportResult.AppendSSHConfigSuccess)
+        {
+            stringBuilder.AppendLine("SSH config appended successfully.");
+            stringBuilder.AppendLine();
+            stringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
+            stringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
+            stringBuilder.AppendLine();
+        }
+        else
+        {
+            stringBuilder.AppendLine("SSH config failed to append.");
+            stringBuilder.AppendLine(exportResult.SSHConfigSummary);
+        }
+        
+        stringBuilder.AppendLine();
+        
+        if (exportResult.AppendAgentTomlSuccess)
+        {
+            stringBuilder.AppendLine("Agent config appended successfully.");
+        }
+        else
+        {
+            stringBuilder.AppendLine("Agent config failed to append.");
+            stringBuilder.AppendLine(exportResult.AgentTomlSummary);
+        }
+        
+        ExportSummaryText = stringBuilder.ToString();
+        
+        IsLoading = false;
     }
-}
+    
+    
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task GoToPreviewAsync()
+    { 
+        if (SelectedAccount is null || SelectedVault is null)
+        {
+            return;
+        }
+        
+        var selectedItemObjects = new List<Item>();
+        foreach (var item in Items)
+        {
+            if (item.IsChecked)
+            {
+                selectedItemObjects.Add(item.Item);
+            }
+        }
+
+        if (selectedItemObjects.Count == 0)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Please select one or more SSH keys to continue.", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            return;
+        }
+
+        await GoToStage4();
+    }
+    
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task ExportAsync()
+    {
+        await GoToStage5();
+    }
+    
+    
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task MenuSelectAccountClickedAsync()
+    {
+        if (IsLoading)
+        {
+            return;
+        }
+
+        var messageBox = MessageBoxManager.GetMessageBoxStandard("Discard changes?", $"Are you sure you want to discard changes and go back to select account?", ButtonEnum.YesNo, Icon.Question);
+        var result = await messageBox.ShowWindowDialogAsync(mainWindow);
+        if (result == ButtonResult.Yes)
+        {
+            await GoToStage1();
+        }
+    }
+    
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task MenuSelectVaultClickedAsync()
+    {
+        if (IsLoading)
+        {
+            return;
+        }
+
+        var messageBox = MessageBoxManager.GetMessageBoxStandard("Discard changes?", $"Are you sure you want to discard changes and go back to select vault?", ButtonEnum.YesNo, Icon.Question);
+        var result = await messageBox.ShowWindowDialogAsync(mainWindow);
+        if (result == ButtonResult.Yes)
+        {
+            await GoToStage2();
+        }
+    }
+    
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task MenuSelectItemsClickedAsync()
+    {
+        if (IsLoading)
+        {
+            return;
+        }
+
+        var messageBox = MessageBoxManager.GetMessageBoxStandard("Discard changes?", $"Are you sure you want to discard changes and go back to select SSH keys?", ButtonEnum.YesNo, Icon.Question);
+        var result = await messageBox.ShowWindowDialogAsync(mainWindow);
+        if (result == ButtonResult.Yes)
+        {
+            await GoToStage3();
+        }
+    }
+    
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task MenuPreviewChangesClickedAsync()
+    {
+        if (IsLoading)
+        {
+            return;
+        }
+        
+        var messageBox = MessageBoxManager.GetMessageBoxStandard("Discard changes?", $"Are you sure you want to discard changes and go back to preview output?", ButtonEnum.YesNo, Icon.Question);
+        var result = await messageBox.ShowWindowDialogAsync(mainWindow);
+        if (result == ButtonResult.Yes)
+        {
+            await GoToStage4();
+        }
+    }
+    
+  }

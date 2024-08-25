@@ -34,9 +34,9 @@ if (response == "Quit")
 }
 
 
-if (opManager.SSHConfigPathExists == false)
+if (File.Exists(opManager.GetSSHPath()) == false)
 {
-    AnsiConsoleHelper.DisplayErrorAndContinue($"SSH directory ({opManager.SSHConfigPath}) does not exist. SSH pathing needs to be configured for public key generation to work.");
+    AnsiConsoleHelper.DisplayErrorAndContinue($"SSH directory ({opManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.");
 }
 
 
@@ -156,7 +156,7 @@ try
                 selectedItemObjects.Add(itemsDictionary[selectedItem]);
             }
 
-            if (opManager.SSHConfigPathExists)
+            if (File.Exists(opManager.GetSSHConfigPath()))
             {
                 var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
 

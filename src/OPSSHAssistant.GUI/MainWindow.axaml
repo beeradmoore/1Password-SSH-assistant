@@ -3,64 +3,74 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OPSSHAssistant.GUI"
+        xmlns:li="using:LoadingIndicators.Avalonia"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="OPSSHAssistant.GUI.MainWindow"
         x:DataType="local:MainWindowModel"
         Title="1Password SSH Assistant">
+
     
-    <Grid>
-        <Grid RowDefinitions="Auto,16,Auto,16,*,16,Auto" Margin="16" IsVisible="{Binding !AtGenerationStage}">
-            
-            <StackPanel x:Name="AccountStackPanel" Grid.Row="0" Spacing="4">
-                <TextBlock Text="Account:" FontWeight="Bold" />
-                <ComboBox PlaceholderText="{Binding AccountComboBoxPlaceholder}" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" IsEnabled="{Binding !!Accounts.Count}" HorizontalAlignment="Stretch" />
-            </StackPanel>
-            
-            <StackPanel x:Name="VaultStackPanel" Grid.Row="2" Spacing="4" Opacity="0">
-                <StackPanel.Transitions>
-                    <Transitions>
-                        <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
-                    </Transitions>
-                </StackPanel.Transitions>
-                <TextBlock Text="Vault:" FontWeight="Bold" />
-                <ComboBox PlaceholderText="{Binding VaultComboBoxPlaceholder}" ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault}" IsEnabled="{Binding !!Vaults.Count}" HorizontalAlignment="Stretch" />
-            </StackPanel>
-            
-            <!-- this has to be a grid otherwise it breaks scrolling of the items repeater -->
-            <Grid x:Name="ItemsStackPanel" RowDefinitions="Auto,4,*" Grid.Row="4" Opacity="0">
-                <Grid.Transitions>
-                    <Transitions>
-                        <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
-                    </Transitions>
-                </Grid.Transitions>
-                
-                <TextBlock Grid.Row="0" Text="SSH keys:" FontWeight="Bold" />
-                <TextBlock Grid.Row="2" Text="Loading SSH keys..." IsVisible="{Binding IsLoadingItems}" />
-                <TextBlock Grid.Row="2" Text="No SSH keys found">
-                    <TextBlock.IsVisible>
-                            <MultiBinding Converter="{x:Static BoolConverters.And}" x:DataType="local:MainWindowModel">
-                                <Binding Path="!IsLoadingItems" />
-                                <Binding Path="!Items.Count" />
-                            </MultiBinding>
-                    </TextBlock.IsVisible>
-                </TextBlock>
-                <ScrollViewer Grid.Row="2">
-                    <ItemsRepeater ItemsSource="{Binding Items}" IsVisible="{Binding !IsLoadingItems}">
-                        <ItemsRepeater.ItemTemplate>
-                            <DataTemplate x:DataType="local:CheckboxItem">
-                                <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Item.Title}" />
-                            </DataTemplate>
-                        </ItemsRepeater.ItemTemplate>
-                    </ItemsRepeater>
-                </ScrollViewer>
-            </Grid>
-            
-            <Button Grid.Row="6" Content="Generate public keys, ssh config, and agent toml file" HorizontalAlignment="Stretch" Command="{Binding GenerateCommand}" IsVisible="{Binding !!Items.Count}" />
-           
+    <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" ColumnDefinitions="*,*,*,*,*">
+            <local:MenuControl Grid.Column="0" StepNumber="1" Text="Select Account" IsSelected="{Binding Stage1Selected, Mode=TwoWay}" Click="{Binding MenuSelectAccountClickedCommand}" IsEnabled="{Binding Stage1Enabled, Mode=TwoWay}" ZIndex="10" />
+            <local:MenuControl Grid.Column="1" StepNumber="2" Text="Select Vault" IsSelected="{Binding Stage2Selected, Mode=TwoWay}" Click="{Binding MenuSelectVaultClickedCommand}" IsEnabled="{Binding Stage2Enabled, Mode=TwoWay}" ZIndex="9" />
+            <local:MenuControl Grid.Column="2" StepNumber="3" Text="Select SSH Keys" IsSelected="{Binding Stage3Selected, Mode=TwoWay}" Click="{Binding MenuSelectItemsClickedCommand}" IsEnabled="{Binding Stage3Enabled, Mode=TwoWay}" ZIndex="8" />
+            <local:MenuControl Grid.Column="3" StepNumber="4" Text="Preview Changes" IsSelected="{Binding Stage4Selected, Mode=TwoWay}" Click="{Binding MenuPreviewChangesClickedCommand}" IsEnabled="{Binding Stage4Enabled, Mode=TwoWay}" ZIndex="7" />
+            <local:MenuControl Grid.Column="4" StepNumber="5" Text="Export" IsSelected="{Binding Stage5Selected, Mode=TwoWay}" IsEnabled="{Binding Stage5Enabled, Mode=TwoWay}" ZIndex="6" />
         </Grid>
         
-        <Grid IsVisible="{Binding AtGenerationStage}">
-            
+        <Grid Row="1" IsVisible="{Binding Stage1Selected}">
+            <!--<Grid.Transitions>
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+                </Transitions>
+            </Grid.Transitions>
+            -->
+            <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}" />
         </Grid>
+        
+        <Grid Row="1" IsVisible="{Binding Stage2Selected}">
+            <ListBox ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault}"  />
+        </Grid>
+        
+        <Grid Row="1" RowDefinitions="*,Auto" IsVisible="{Binding Stage3Selected}">
+            <ScrollViewer Grid.Row="0">
+                <ItemsRepeater ItemsSource="{Binding Items}">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="local:CheckboxItem">
+                            <CheckBox Margin="16,8,16,0" IsChecked="{Binding IsChecked}" Content="{Binding Item.Title}" />
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
+            
+            <Button Grid.Row="1" Margin="16" Content="Preview changes" HorizontalAlignment="Center" Command="{Binding GoToPreviewCommand}" IsEnabled="{Binding !!Items.Count}" />
+
+        </Grid>
+        
+        <Grid Row="1" RowDefinitions="*,Auto" IsVisible="{Binding Stage4Selected}">
+            <ScrollViewer Grid.Row="0">
+                <TextBox Text="{Binding ExportPreviewText}" IsReadOnly="true" BorderThickness="0" />
+            </ScrollViewer>
+            <Button Grid.Row="1" Margin="16" Content="Proceed with the above changes" HorizontalAlignment="Center" IsEnabled="{Binding !IsLoading}" Command="{Binding ExportCommand}" />
+        </Grid>
+        
+        
+        <Grid Row="1" RowDefinitions="*" IsVisible="{Binding Stage5Selected}">
+            <ScrollViewer Grid.Row="0">
+                <TextBox Text="{Binding ExportSummaryText}" IsReadOnly="true" BorderThickness="0" />
+            </ScrollViewer>
+        </Grid>
+        
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLoading}">
+            <TextBlock Grid.Row="0" Text="{Binding LoadingText}" FontSize="20" />
+            <li:LoadingIndicator Grid.Row="1" IsActive="{Binding IsLoading}" Mode="Arc" SpeedRatio="4.0" Width="100" Height="100" />
+        </Grid>
+        
+        <Grid Grid.Row="1" RowDefinitions="Auto,Auto" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsError}">
+            <TextBlock Grid.Row="0" Text="{Binding ErrorText}" Foreground="Red" FontWeight="Bold" FontSize="20" />
+        </Grid>
+
+        
     </Grid>
 </Window>

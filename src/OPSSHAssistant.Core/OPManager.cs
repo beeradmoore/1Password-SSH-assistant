@@ -11,19 +11,10 @@ namespace OPSSHAssistant.Core;
 
 public class OPManager
 {
-    public bool SSHConfigPathExists { get; init; } = false;
-
-    public string SSHConfigPath { get; init; } = string.Empty;
-
-    public string HomePath { get; init; } = string.Empty;
-
     public string LastError { get; set; } = string.Empty;
 
     public OPManager()
     {
-        HomePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        SSHConfigPath = Path.Combine(HomePath, ".ssh");
-        SSHConfigPathExists = Directory.Exists(SSHConfigPath);
     }
 
     public async Task<bool> CheckFor1PasswordCLIAsync()
@@ -76,6 +67,8 @@ public class OPManager
                 LastError = "Could not load accounts. Are you sure enabled 1Password CLI from within the 1Password desktop application?";
                 return null;
             }
+            
+            accounts.Sort((a, b) => a.Email.CompareTo(b.Email));
 
             return accounts;
         }
@@ -119,6 +112,8 @@ public class OPManager
 			    LastError = "Could not load vaults.";
 			    return null;
 		    }
+		    
+		    vaults.Sort((a, b) => a.Name.CompareTo(b.Name));
 
 		    return vaults;
 	    }
@@ -169,7 +164,10 @@ public class OPManager
 		    }
 		    
 		    var items = JsonSerializer.Deserialize<List<Item>>(result.StandardOutput);
-		    
+		    if (items is not null)
+		    {
+			    items.Sort((a, b) => a.Title.CompareTo(b.Title));
+		    }
 		    return items;
 	    }
 	    catch (Exception err)
@@ -233,7 +231,7 @@ public class OPManager
 
 				foreach (var publicKeyFileName in publicKeyFileNames)
 				{
-					var fullPath = Path.Combine(SSHConfigPath, publicKeyFileName);
+					var fullPath = Path.Combine(GetSSHPath(), publicKeyFileName);
 					
 					if (File.Exists(fullPath))
 					{
@@ -299,40 +297,71 @@ public class OPManager
 		}
 	}
 
+	public string GetAgentTomlDirectory()
+	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\1Password\config\ssh\");
+		}
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh");
+			//return "~/.config/1Password/ssh/agent.toml";
+		}
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		{
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh");
+			//return "~/.config/1Password/ssh/agent.toml";
+		}
+		
+		throw new Exception("Could not determine 1Password agent.toml path.");
+	}
 	public string GetAgentTomlPath()
 	{
+		return Path.Combine(GetAgentTomlDirectory(), "agent.toml");
+		
+		/*
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
 			return Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\1Password\config\ssh\agent.toml");
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 		{
-			return "~/.config/1Password/ssh/agent.toml";
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh", "agent.toml");
+			//return "~/.config/1Password/ssh/agent.toml";
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-		{ 
-			return "~/.config/1Password/ssh/agent.toml";
+		{
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh", "agent.toml");
+			//return "~/.config/1Password/ssh/agent.toml";
 		}
 		
-		return "??? oh no ???";
+		throw new Exception("Could not determine 1Password agent.toml path.");
+		*/
 	}
 
-	public string GetSSHConfigPath()
+	public string GetSSHPath()
 	{
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
-			return Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\.ssh\config");
+			//HomePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+			return Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\.ssh\");
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 		{
-			return "~/.ssh/config";
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
 		}
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
-			return "~/.ssh/config";
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
 		}
 		
-		return "??? oh no ???";
+		throw new Exception("Could not determine SSH config path.");
+	}
+	
+	public string GetSSHConfigPath()
+	{
+		return Path.Combine(GetSSHPath(), "config");
 	}
 
 	public string GenerateUpdatedAgentToml(Account account, Vault vault, List<Item> items)
@@ -378,5 +407,129 @@ public class OPManager
 		}
 
 		return sshConfigStringBuilder.ToString();
+	}
+	
+	
+	public async Task<PreparedExport> PrepareExportAsync(Account selectedAccount, Vault selectedVault, List<Item> selectedItemObjects)
+	{
+		var preparedExport = new PreparedExport();
+
+		var anyPublicKeysNeedExport = await LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
+        
+		if (anyPublicKeysNeedExport is null)
+		{
+			preparedExport.Success = false;
+			preparedExport.ErrorMessage = "Could not detect public keys to export";
+			preparedExport.ErrorMessageDetails = LastError;
+			return preparedExport;
+		}
+        
+		if (anyPublicKeysNeedExport == true)
+		{           
+			foreach (var selectedItemObject in selectedItemObjects)
+			{
+				if (selectedItemObject.NeedsExport)
+				{
+					preparedExport.PublicKeysToExport.Add(selectedItemObject);
+				}
+			}
+		}
+
+		preparedExport.SSHConfigToBeCreated = (File.Exists(GetSSHConfigPath()) == false);
+		preparedExport.SSHConfigToAppend = GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
+        
+		preparedExport.AgentTomlToBeCreated = (File.Exists(GetAgentTomlPath()) == false);
+		preparedExport.AgentTomlToAppend = GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
+
+		preparedExport.Success = true;
+        
+		return preparedExport;
+	}
+	
+	public async Task<ExportResult> PerformExportAsync(PreparedExport preparedExport)
+	{
+		var exportResult = new ExportResult();
+
+		exportResult.PublicKeyGenerationSuccess = true;
+		foreach (var selectedItemObject in preparedExport.PublicKeysToExport)
+		{
+			if (selectedItemObject.NeedsExport)
+			{
+				try
+				{
+					await File.WriteAllTextAsync(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
+				}
+				catch (Exception err)
+				{
+					exportResult.PublicKeyGenerationSuccess = false;
+					exportResult.PublicKeyGenerationSummary += $"Error exporting {selectedItemObject.PublicKeyPath}. ({err.Message})\n";
+				}
+			}
+		}
+		exportResult.PublicKeyGenerationSummary = exportResult.PublicKeyGenerationSummary.TrimEnd();
+
+		exportResult.AppendSSHConfigSuccess = true;
+		if (preparedExport.SSHConfigToBeCreated)
+		{
+			try
+			{
+				if (Directory.Exists(GetSSHPath()) == false)
+				{
+					Directory.CreateDirectory(GetSSHPath());
+				}
+				
+				await File.WriteAllTextAsync(GetSSHConfigPath(), preparedExport.SSHConfigToAppend);
+			}
+			catch (Exception err)
+			{
+				exportResult.AppendSSHConfigSuccess = false;
+				exportResult.SSHConfigSummary = $"Error creating SSH config. ({err.Message})";
+			}
+		}
+		else
+		{
+			try
+			{
+				await File.AppendAllTextAsync(GetSSHConfigPath(), "\n\n" + preparedExport.SSHConfigToAppend);
+			}
+			catch (Exception err)
+			{
+				exportResult.AppendSSHConfigSuccess = false;
+				exportResult.SSHConfigSummary = $"Error appending SSH config. ({err.Message})";
+			}
+		}
+
+		exportResult.AppendAgentTomlSuccess = true;
+		if (preparedExport.AgentTomlToBeCreated)
+		{
+			try
+			{
+				if (Directory.Exists(GetAgentTomlDirectory()) == false)
+				{
+					Directory.CreateDirectory(GetAgentTomlDirectory());
+				}
+				
+				await File.WriteAllTextAsync(GetAgentTomlPath(), preparedExport.AgentTomlToAppend);
+			}
+			catch (Exception err)
+			{
+				exportResult.AppendAgentTomlSuccess = false;
+				exportResult.AgentTomlSummary = $"Error creating agent.toml. ({err.Message})";
+			}
+		}
+		else
+		{
+			try
+			{
+				await File.AppendAllTextAsync(GetAgentTomlPath(), "\n\n" + preparedExport.AgentTomlToAppend);
+			}
+			catch (Exception err)
+			{
+				exportResult.AppendAgentTomlSuccess = false;
+				exportResult.AgentTomlSummary = $"Error appending agent.toml. ({err.Message})";
+			}
+		}
+
+		return exportResult;
 	}
 }
