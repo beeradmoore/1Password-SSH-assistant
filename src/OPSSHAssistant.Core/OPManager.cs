@@ -386,8 +386,8 @@ public class OPManager
 				
 		foreach (var storedItemObject in items)
 		{
-			sshConfigStringBuilder.AppendLine($"Host UPDATE_HOST_NAME_HERE");
-			sshConfigStringBuilder.AppendLine($"  User UPDATE_USERNAME_HERE");
+			sshConfigStringBuilder.AppendLine($"Host {storedItemObject.Host}");
+			sshConfigStringBuilder.AppendLine($"  User {storedItemObject.Username}");
 			sshConfigStringBuilder.AppendLine($"  PreferredAuthentications publickey");
 			sshConfigStringBuilder.AppendLine($"  IdentityFile \"{storedItemObject.PublicKeyPath}\"");
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

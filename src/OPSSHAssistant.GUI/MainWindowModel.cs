@@ -7,6 +7,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using AsyncAwaitBestPractices;
 using Avalonia.Controls;
@@ -59,10 +61,19 @@ public partial class MainWindowModel : ObservableObject
         
     [ObservableProperty]
     bool stage5Enabled = false;
+    
+    [ObservableProperty]
+    bool stage6Selected = false;
+        
+    [ObservableProperty]
+    bool stage6Enabled = false;
+    
 
     public ObservableCollection<Account> Accounts { get; set; } = new ObservableCollection<Account>();
     public ObservableCollection<Vault> Vaults { get; set; } = new ObservableCollection<Vault>();
     public ObservableCollection<CheckboxItem> Items { get; set; } = new ObservableCollection<CheckboxItem>();
+    
+    public ObservableCollection<Item> SelectedItems { get; set; } = new ObservableCollection<Item>();
 
     [ObservableProperty]
     Account? selectedAccount = null;
@@ -220,6 +231,9 @@ public partial class MainWindowModel : ObservableObject
 
     void UpdateStageButtons(int stageNumber)
     {
+        Stage6Enabled = (stageNumber >= 6);
+        Stage6Selected = (stageNumber == 6);
+        
         Stage5Enabled = (stageNumber >= 5);
         Stage5Selected = (stageNumber == 5);
 
@@ -352,13 +366,15 @@ public partial class MainWindowModel : ObservableObject
             Items.Add(new CheckboxItem(loadedItem));
         }
     }
-    
+
     async Task GoToStage4()
     {
         if (SelectedAccount is null || SelectedVault is null)
         {
             return;
         }
+        
+        SelectedItems.Clear();
         
         var selectedItemObjects = new List<Item>();
         foreach (var item in Items)
@@ -368,13 +384,36 @@ public partial class MainWindowModel : ObservableObject
                 selectedItemObjects.Add(item.Item);
             }
         }
-
+        
         if (selectedItemObjects.Count == 0)
         {
             return;
         }
         
+        foreach (var item in selectedItemObjects)
+        {
+            SelectedItems.Add(item);
+        }
+        
         UpdateStageButtons(4);
+
+        
+    }
+
+    async Task GoToStage5()
+    {
+        if (SelectedAccount is null || SelectedVault is null)
+        {
+            return;
+        }
+        
+        if (SelectedItems.Count == 0)
+        {
+            return;
+        }
+
+        
+        UpdateStageButtons(5);
 
         ExportPreviewText = string.Empty;
 
@@ -382,7 +421,7 @@ public partial class MainWindowModel : ObservableObject
         LoadingText = "Generating output...";
         IsLoading = true;
         preparedExport = null;
-        preparedExport = await opManager.PrepareExportAsync(SelectedAccount, SelectedVault, selectedItemObjects);
+        preparedExport = await opManager.PrepareExportAsync(SelectedAccount, SelectedVault, SelectedItems.ToList());
         
         if (preparedExport.Success == false)
         {
@@ -423,9 +462,6 @@ public partial class MainWindowModel : ObservableObject
             stringBuilder.AppendLine("The following config will be appended to:");
         }
         stringBuilder.AppendLine(opManager.GetSSHConfigPath());
-        stringBuilder.AppendLine();
-        stringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
-        stringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
         stringBuilder.AppendLine("\n");
         stringBuilder.AppendLine(preparedExport.SSHConfigToAppend);
         stringBuilder.AppendLine("\n");
@@ -446,7 +482,7 @@ public partial class MainWindowModel : ObservableObject
         ExportPreviewText = stringBuilder.ToString();
     }
     
-    async Task GoToStage5()
+    async Task GoToStage6()
     {
         if (preparedExport is null)
         {
@@ -458,7 +494,7 @@ public partial class MainWindowModel : ObservableObject
             return;
         }
         
-        UpdateStageButtons(5);
+        UpdateStageButtons(6);
         ExportSummaryText = string.Empty;
         ResetError();
         LoadingText = "Exporting...";
@@ -483,9 +519,6 @@ public partial class MainWindowModel : ObservableObject
         {
             stringBuilder.AppendLine("SSH config appended successfully.");
             stringBuilder.AppendLine();
-            stringBuilder.AppendLine("IMPORTANT: Update UPDATE_HOST_NAME_HERE to be the host name you want to connect to for that ssh key.");
-            stringBuilder.AppendLine("IMPORTANT: Update UPDATE_USERNAME_HERE to be the username you want to connect with for that ssh key.");
-            stringBuilder.AppendLine();
         }
         else
         {
@@ -509,12 +542,11 @@ public partial class MainWindowModel : ObservableObject
         
         IsLoading = false;
     }
-    
-    
 
     [RelayCommand(AllowConcurrentExecutions = false)]
-    async Task GoToPreviewAsync()
-    { 
+    async Task GoToSetDetailsAsync()
+    {
+        /*
         if (SelectedAccount is null || SelectedVault is null)
         {
             return;
@@ -534,15 +566,34 @@ public partial class MainWindowModel : ObservableObject
             var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Please select one or more SSH keys to continue.", ButtonEnum.Ok, Icon.Error);
             await errorMessageBox.ShowWindowDialogAsync(mainWindow);
             return;
+        }*/
+        
+        await GoToStage4();
+    }
+    
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task GoToPreviewAsync()
+    { 
+        if (SelectedAccount is null || SelectedVault is null)
+        {
+            return;
         }
 
-        await GoToStage4();
+        if (SelectedItems.Count == 0)
+        {
+            var errorMessageBox = MessageBoxManager.GetMessageBoxStandard("Error", $"Please select one or more SSH keys to continue.", ButtonEnum.Ok, Icon.Error);
+            await errorMessageBox.ShowWindowDialogAsync(mainWindow);
+            return;
+        }
+
+        await GoToStage5();
     }
     
     [RelayCommand(AllowConcurrentExecutions = false)]
     async Task ExportAsync()
     {
-        await GoToStage5();
+        await GoToStage6();
     }
     
     
@@ -593,6 +644,17 @@ public partial class MainWindowModel : ObservableObject
             await GoToStage3();
         }
     }
+
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    async Task MenuSetDetailsClickedAsync()
+    {
+        if (IsLoading)
+        {
+            return;
+        }
+    }
+
+    
     
     [RelayCommand(AllowConcurrentExecutions = false)]
     async Task MenuPreviewChangesClickedAsync()
@@ -606,7 +668,7 @@ public partial class MainWindowModel : ObservableObject
         var result = await messageBox.ShowWindowDialogAsync(mainWindow);
         if (result == ButtonResult.Yes)
         {
-            await GoToStage4();
+            await GoToStage5();
         }
     }
     

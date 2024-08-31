@@ -40,6 +40,12 @@ public class Item
     [JsonIgnore]
     public bool NeedsExport { get; set; } = false;
 
+    [JsonIgnore]
+    public string Username { get; set; } = "UPDATE_USERNAME_HERE";
+
+    [JsonIgnore]
+    public string Host { get; set; } = "UPDATE_HOST_NAME_HERE";
+	    
     public string GetDisplayName()
     {
 	    return $"{Title} ({Id})";

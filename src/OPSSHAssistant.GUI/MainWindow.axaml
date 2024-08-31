@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:OPSSHAssistant.GUI"
         xmlns:li="using:LoadingIndicators.Avalonia"
+        xmlns:coreData="clr-namespace:OPSSHAssistant.Core.Data;assembly=OPSSHAssistant.Core"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="OPSSHAssistant.GUI.MainWindow"
         x:DataType="local:MainWindowModel"
@@ -11,12 +12,13 @@
 
     
     <Grid RowDefinitions="Auto,*">
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" ColumnDefinitions="*,*,*,*,*">
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" ColumnDefinitions="*,*,*,*,*,*">
             <local:MenuControl Grid.Column="0" StepNumber="1" Text="Select Account" IsSelected="{Binding Stage1Selected, Mode=TwoWay}" Click="{Binding MenuSelectAccountClickedCommand}" IsEnabled="{Binding Stage1Enabled, Mode=TwoWay}" ZIndex="10" />
             <local:MenuControl Grid.Column="1" StepNumber="2" Text="Select Vault" IsSelected="{Binding Stage2Selected, Mode=TwoWay}" Click="{Binding MenuSelectVaultClickedCommand}" IsEnabled="{Binding Stage2Enabled, Mode=TwoWay}" ZIndex="9" />
             <local:MenuControl Grid.Column="2" StepNumber="3" Text="Select SSH Keys" IsSelected="{Binding Stage3Selected, Mode=TwoWay}" Click="{Binding MenuSelectItemsClickedCommand}" IsEnabled="{Binding Stage3Enabled, Mode=TwoWay}" ZIndex="8" />
-            <local:MenuControl Grid.Column="3" StepNumber="4" Text="Preview Changes" IsSelected="{Binding Stage4Selected, Mode=TwoWay}" Click="{Binding MenuPreviewChangesClickedCommand}" IsEnabled="{Binding Stage4Enabled, Mode=TwoWay}" ZIndex="7" />
-            <local:MenuControl Grid.Column="4" StepNumber="5" Text="Export" IsSelected="{Binding Stage5Selected, Mode=TwoWay}" IsEnabled="{Binding Stage5Enabled, Mode=TwoWay}" ZIndex="6" />
+            <local:MenuControl Grid.Column="3" StepNumber="4" Text="Set Details" IsSelected="{Binding Stage4Selected, Mode=TwoWay}" Click="{Binding MenuSetDetailsClickedCommand}" IsEnabled="{Binding Stage4Enabled, Mode=TwoWay}" ZIndex="7" />
+            <local:MenuControl Grid.Column="4" StepNumber="5" Text="Preview Changes" IsSelected="{Binding Stage5Selected, Mode=TwoWay}" Click="{Binding MenuPreviewChangesClickedCommand}" IsEnabled="{Binding Stage5Enabled, Mode=TwoWay}" ZIndex="6" />
+            <local:MenuControl Grid.Column="5" StepNumber="6" Text="Export" IsSelected="{Binding Stage6Selected, Mode=TwoWay}" IsEnabled="{Binding Stage6Enabled, Mode=TwoWay}" ZIndex="5" />
         </Grid>
         
         <Grid Row="1" IsVisible="{Binding Stage1Selected}">
@@ -44,11 +46,33 @@
                 </ItemsRepeater>
             </ScrollViewer>
             
-            <Button Grid.Row="1" Margin="16" Content="Preview changes" HorizontalAlignment="Center" Command="{Binding GoToPreviewCommand}" IsEnabled="{Binding !!Items.Count}" />
+            <Button Grid.Row="1" Margin="16" Content="Set details" HorizontalAlignment="Center" Command="{Binding GoToSetDetailsCommand}" IsEnabled="{Binding !!Items.Count}" />
 
         </Grid>
         
         <Grid Row="1" RowDefinitions="*,Auto" IsVisible="{Binding Stage4Selected}">
+            <ScrollViewer Grid.Row="0" Width="400" HorizontalAlignment="Center">
+                <ItemsRepeater x:Name="SelectedItemsRepeater" ItemsSource="{Binding SelectedItems}">
+                    <ItemsRepeater.ItemTemplate>
+                        <DataTemplate x:DataType="coreData:Item">
+                            <Grid RowDefinitions="16,Auto,8,Auto,8,Auto,8" ColumnDefinitions="Auto,16,*" HorizontalAlignment="Stretch">
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="SSH Key:" VerticalAlignment="Center" FontWeight="Bold" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding Title}" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="Username:" VerticalAlignment="Center" FontWeight="Bold" />
+                                <TextBox   Grid.Row="3" Grid.Column="2" Text="{Binding Username}" GotFocus="SetDetails_TextBox_OnGotFocus" />
+                                
+                                <TextBlock Grid.Row="5" Grid.Column="0" Text="Host:" VerticalAlignment="Center" FontWeight="Bold" />
+                                <TextBox   Grid.Row="5" Grid.Column="2" Text="{Binding Host}" GotFocus="SetDetails_TextBox_OnGotFocus" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsRepeater.ItemTemplate>
+                </ItemsRepeater>
+            </ScrollViewer>
+            <Button Grid.Row="1" Margin="16" Content="Preview changes" HorizontalAlignment="Center" Command="{Binding GoToPreviewCommand}" IsEnabled="{Binding !!Items.Count}" />
+        </Grid>
+        
+        <Grid Row="1" RowDefinitions="*,Auto" IsVisible="{Binding Stage5Selected}">
             <ScrollViewer Grid.Row="0">
                 <TextBox Text="{Binding ExportPreviewText}" IsReadOnly="true" BorderThickness="0" />
             </ScrollViewer>
@@ -56,7 +80,7 @@
         </Grid>
         
         
-        <Grid Row="1" RowDefinitions="*" IsVisible="{Binding Stage5Selected}">
+        <Grid Row="1" RowDefinitions="*" IsVisible="{Binding Stage6Selected}">
             <ScrollViewer Grid.Row="0">
                 <TextBox Text="{Binding ExportSummaryText}" IsReadOnly="true" BorderThickness="0" />
             </ScrollViewer>
