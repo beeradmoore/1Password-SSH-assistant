@@ -380,7 +380,7 @@ public class OPManager
 		return agentTomlStringBuilder.ToString();
 	}
 	
-	public string GenerateUpdatedSSHConfig(Account accuont, Vault vault, List<Item> items)
+	public string GenerateUpdatedSSHConfig(Account account, Vault vault, List<Item> items)
 	{
 		var sshConfigStringBuilder = new StringBuilder();
 				
