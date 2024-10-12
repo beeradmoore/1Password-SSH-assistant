@@ -392,9 +392,11 @@ public class OPManager
 			sshConfigStringBuilder.AppendLine($"  IdentityFile \"{storedItemObject.PublicKeyPath}\"");
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
-				sshConfigStringBuilder.AppendLine(@"  IdentityAgent ""\\.\pipe\openssh-ssh-agent""");
-			}
-			else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                // Windows OpenSSH agent no longer wants this line appended.
+                // https://github.com/beeradmoore/1Password-SSH-assistant/issues/8
+                //sshConfigStringBuilder.AppendLine(@"  IdentityAgent ""\\.\pipe\openssh-ssh-agent""");
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
 			{
 				sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
 			}
