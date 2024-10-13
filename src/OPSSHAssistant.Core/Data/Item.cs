@@ -1,11 +1,6 @@
-using System.Diagnostics;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using CliWrap;
-using CliWrap.Buffered;
-using Spectre.Console;
 
-namespace OPSSHAssistant.Data;
+namespace OPSSHAssistant.Core.Data;
 
 public class Item
 {
@@ -43,37 +38,16 @@ public class Item
     public string PublicKey { get; set; } = string.Empty;
 
     [JsonIgnore]
-    public bool ShouldExport { get; set; } = false;
+    public bool NeedsExport { get; set; } = false;
 
+    [JsonIgnore]
+    public string Username { get; set; } = "UPDATE_USERNAME_HERE";
+
+    [JsonIgnore]
+    public string Host { get; set; } = "UPDATE_HOST_NAME_HERE";
+	    
     public string GetDisplayName()
     {
 	    return $"{Title} ({Id})";
-    }
-
-    public async Task<bool> LoadPublicKeyAsync(Account selectedAccount)
-    {	
-	    try
-	    {
-		    var result = await Cli.Wrap("op")
-			    .WithArguments($"item get {Id} --vault {Vault.Id} --account {selectedAccount.AccountUuid} --fields \"public_key\" --format json --no-color")
-			    .ExecuteBufferedAsync();
-
-		    var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput);
-			
-		    if (publicKey is null || string.IsNullOrEmpty(publicKey.Value))
-		    {
-			    throw new Exception("Public key is null or empty.");
-		    }
-
-		    PublicKey = publicKey.Value;
-		    
-		    return true;
-	    }
-	    catch (Exception err)
-	    {
-		    Debugger.Break();
-		    AnsiConsole.MarkupLine($"[red]Error loading public key for {Title}: {err.Message}[/]");
-		    return false;
-	    }
     }
 }

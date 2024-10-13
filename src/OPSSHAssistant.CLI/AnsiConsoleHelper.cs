@@ -1,6 +1,6 @@
 using Spectre.Console;
 
-namespace OPSSHAssistant;
+namespace OPSSHAssistant.CLI;
 
 public static class AnsiConsoleHelper
 {
