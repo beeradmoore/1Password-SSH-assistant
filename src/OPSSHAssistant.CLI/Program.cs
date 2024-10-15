@@ -34,7 +34,7 @@ if (response == "Quit")
 }
 
 
-if (File.Exists(opManager.GetSSHPath()) == false)
+if (Directory.Exists(opManager.GetSSHPath()) == false)
 {
     AnsiConsoleHelper.DisplayErrorAndContinue($"SSH directory ({opManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.");
 }
