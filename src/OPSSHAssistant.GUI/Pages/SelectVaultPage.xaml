@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:OPSSHAssistant.GUI.Pages"
+             xmlns:data="clr-namespace:OPSSHAssistant.Core.Data;assembly=OPSSHAssistant.Core"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:fa="clr-namespace:OPSSHAssistant.GUI.FontAwesome;assembly=1Password SSH Assistant"
+             x:Class="OPSSHAssistant.GUI.Pages.SelectVaultPage"
+             x:DataType="pages:SelectVaultPageModel"
+             Title="Select Vault">
+    
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    
+    <Grid RowDefinitions="Auto,*">
+        
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="16,0" IsEnabled="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}">
+            <Label Grid.Column="0" Style="{StaticResource SearchIcon}" />
+            <Entry Grid.Column="1" Placeholder="Search vaults" Text="{Binding SearchText}" Style="{StaticResource SearchEntry}" />
+        </Grid>
+        
+        <CollectionView Grid.Row="1" ItemsSource="{Binding Vaults}" SelectedItem="{Binding SelectedVault, Mode=TwoWay}" SelectionMode="Single">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="data:Vault">
+                    <Grid RowDefinitions="Auto,1" RowSpacing="8" Padding="0,8,0,0" ColumnDefinitions="*,Auto" HorizontalOptions="Fill">
+                        <Label Grid.Row="0" Grid.Column="0" Text="{Binding Name}" Style="{StaticResource CollectionViewMenuText}" />
+                        <Label Grid.Row="0" Grid.Column="1" Text="{x:Static fa:IconFont.ChevronRight}" Style="{StaticResource CollectionViewMenuText}" FontFamily="FontAwesome6Solid900" />
+                        <BoxView Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource CollectionViewSeperator}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        
+        <VerticalStackLayout Grid.Row="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" IsVisible="{Binding IsLoading}">
+            <ActivityIndicator />
+            <Label Text="Loading vaults..." />
+        </VerticalStackLayout>
+            
+        <VerticalStackLayout Grid.Row="1" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding IsError}">
+            <Label Text="{Binding ErrorText}" />
+        </VerticalStackLayout>
+        
+    </Grid>
+    
+</ContentPage>

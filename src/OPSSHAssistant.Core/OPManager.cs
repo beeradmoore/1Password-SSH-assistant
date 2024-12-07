@@ -22,9 +22,29 @@ public class OPManager
         try
         {
             var result = await Cli.Wrap("op")
-                .ExecuteAsync();
+	            .WithValidation(CommandResultValidation.None)
+                .ExecuteBufferedAsync().ConfigureAwait(false);
 
-            return true;
+            if (result.IsSuccess)
+            {
+	            return true;
+            }
+            
+            Debugger.Break();
+            
+            // Fails with exit code 141
+            
+            // Sometimes this needs to run twice
+            result = await Cli.Wrap("op")
+	            .WithValidation(CommandResultValidation.None)
+	            .ExecuteBufferedAsync().ConfigureAwait(false);
+
+            Debugger.Break();
+            
+            if (result.IsSuccess)
+            {
+	            return true;
+            }
         }
         catch (Exception err)
         {
@@ -32,15 +52,34 @@ public class OPManager
             Debug.WriteLine($"Error: {err.Message}");
             return false;
         }
+
+        return false;
     }
 
     public async Task<List<Account>?> LoadAccountsAsync()
     {
         try
         {
+	        /*
+	        var stdOutBuffer = new StringBuilder();
+	        var stdErrBuffer = new StringBuilder();
+
+
+	        var result1 = await Cli.Wrap("ls")
+		        .WithArguments("-la")
+		        .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
+		        .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
+		        .ExecuteAsync();
+
+	        Console.WriteLine(stdOutBuffer.ToString());
+	        Console.WriteLine(stdErrBuffer.ToString());
+	        
+	        Debugger.Break();
+	        */
+	        
             var result = await Cli.Wrap("op")
                 .WithArguments("account list --format json --no-color")
-                .ExecuteBufferedAsync();
+                .ExecuteBufferedAsync(Encoding.UTF8);
 
             if (result.IsSuccess == false)
             {
@@ -85,7 +124,7 @@ public class OPManager
 	    {
 		    var result = await Cli.Wrap("op")
 			    .WithArguments($"vault list --account {account.AccountUuid} --format json --no-color")
-			    .ExecuteBufferedAsync();
+			    .ExecuteBufferedAsync(Encoding.UTF8);
 		    
 		    if (result.IsSuccess == false)
 		    {
@@ -142,7 +181,7 @@ public class OPManager
 	    {
 		    var result = await Cli.Wrap("op")
 			    .WithArguments($"item list --account {account.AccountUuid} --vault {vault.Id} --format json --no-color --categories \"SSH Key\"")
-			    .ExecuteBufferedAsync();
+			    .ExecuteBufferedAsync(Encoding.UTF8);
 
 		    if (result.IsSuccess == false)
 		    {
@@ -278,7 +317,7 @@ public class OPManager
 		{
 			var result = await Cli.Wrap("op")
 				.WithArguments($"item get {item.Id} --vault {vault.Id} --account {account.AccountUuid} --fields \"public_key\" --format json --no-color")
-				.ExecuteBufferedAsync();
+				.ExecuteBufferedAsync(Encoding.UTF8);
 
 			var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput);
 
@@ -347,7 +386,8 @@ public class OPManager
 			//HomePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 			return Environment.ExpandEnvironmentVariables(@"%USERPROFILE%\.ssh\");
 		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+		         RuntimeInformation.RuntimeIdentifier.StartsWith("maccatalyst", StringComparison.OrdinalIgnoreCase))
 		{
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
 		}
