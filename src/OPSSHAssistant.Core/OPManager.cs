@@ -303,7 +303,8 @@ public class OPManager
 		{
 			return Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\1Password\config\ssh\");
 		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+		         RuntimeInformation.RuntimeIdentifier.StartsWith("maccatalyst", StringComparison.OrdinalIgnoreCase))
 		{
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh");
 			//return "~/.config/1Password/ssh/agent.toml";
@@ -396,7 +397,8 @@ public class OPManager
                 // https://github.com/beeradmoore/1Password-SSH-assistant/issues/8
                 //sshConfigStringBuilder.AppendLine(@"  IdentityAgent ""\\.\pipe\openssh-ssh-agent""");
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
+                     RuntimeInformation.RuntimeIdentifier.StartsWith("maccatalyst", StringComparison.OrdinalIgnoreCase))
 			{
 				sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
 			}
