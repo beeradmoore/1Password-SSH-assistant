@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:OPSSHAssistant.GUI.Pages;assembly=1Password SSH Assistant"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:behaviors="clr-namespace:OPSSHAssistant.GUI.Behaviors;assembly=1Password SSH Assistant"
+             x:Class="OPSSHAssistant.GUI.Pages.PreviewPemTomlChangesPage"
+             x:DataType="pages:PreviewPemTomlChangesPageModel"
+             Title="Preview Changes" 
+             >
+    
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+    
+    <Grid RowDefinitions="*,Auto">
+        
+        <ScrollView Grid.Row="0" Padding="16" IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}">
+            <VerticalStackLayout Spacing="8">
+                <Label Text="Public key exports" Style="{StaticResource Headline}" />
+                <Editor IsReadOnly="True" Text="{Binding PublicKeyExportText}" AutoSize="TextChanges">
+                    <Editor.Behaviors>
+                        <behaviors:EditorNoScrollBehavior />
+                    </Editor.Behaviors>
+                </Editor>
+                <Label Text="SSH config" Style="{StaticResource Headline}" />
+                <Editor IsReadOnly="True" Text="{Binding SshConfigText}" AutoSize="TextChanges">
+                    <Editor.Behaviors>
+                        <behaviors:EditorNoScrollBehavior />
+                    </Editor.Behaviors>
+                </Editor>
+                <Label Text="SSH agent config" Style="{StaticResource Headline}" />   
+                <Editor IsReadOnly="True" Text="{Binding SshAgentConfigText}" AutoSize="TextChanges">
+                    <Editor.Behaviors>
+                        <behaviors:EditorNoScrollBehavior />
+                    </Editor.Behaviors>
+                </Editor>
+            </VerticalStackLayout>
+        </ScrollView>
+        
+        <Button Grid.Row="1" Text="Proceed with the above changes" Command="{Binding GoToNextPageCommand}" IsEnabled="{Binding GoToNextPageEnabled}" Padding="16" HorizontalOptions="Center" />
+
+        <VerticalStackLayout Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" IsVisible="{Binding IsLoading}">
+            <Label Text="Generating output..." />
+            <ActivityIndicator IsRunning="{Binding IsLoading}" />
+        </VerticalStackLayout>
+            
+        <VerticalStackLayout Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding IsError}">
+            <Label Text="{Binding ErrorText}" />
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -25,6 +25,7 @@
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Gray950}, Dark={StaticResource Gray200}}" />
     </Style>
 
+    <!--
     <Style TargetType="Button">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource White}, Dark={StaticResource PrimaryDarkText}}" />
         <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource Primary}, Dark={StaticResource PrimaryDark}}" />
@@ -50,6 +51,7 @@
             </VisualStateGroupList>
         </Setter>
     </Style>
+    -->
 
     <Style TargetType="CheckBox">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource Black}, Dark={StaticResource White}}" />
@@ -97,8 +99,8 @@
         <Setter Property="FontFamily" Value="OpenSansRegular"/>
         <Setter Property="FontSize" Value="14" />
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource Gray200}, Dark={StaticResource Gray500}}" />
-        <Setter Property="MinimumHeightRequest" Value="44"/>
-        <Setter Property="MinimumWidthRequest" Value="44"/>
+        <!--<Setter Property="MinimumHeightRequest" Value="44"/>
+        <Setter Property="MinimumWidthRequest" Value="44"/>-->
         <Setter Property="VisualStateManager.VisualStateGroups">
             <VisualStateGroupList>
                 <VisualStateGroup x:Name="CommonStates">
@@ -189,16 +191,13 @@
 
     <Style TargetType="Label" x:Key="Headline">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
-        <Setter Property="FontSize" Value="32" />
-        <Setter Property="HorizontalOptions" Value="Center" />
-        <Setter Property="HorizontalTextAlignment" Value="Center" />
+        <Setter Property="FontSize" Value="24" />
+        <Setter Property="FontFamily" Value="OpenSansSemiBold" />
     </Style>
 
     <Style TargetType="Label" x:Key="SubHeadline">
         <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource MidnightBlue}, Dark={StaticResource White}}" />
         <Setter Property="FontSize" Value="24" />
-        <Setter Property="HorizontalOptions" Value="Center" />
-        <Setter Property="HorizontalTextAlignment" Value="Center" />
     </Style>
 
     <Style TargetType="ListView">
@@ -467,6 +466,16 @@
         <Setter Property="VerticalOptions" Value="Center" />
         <Setter Property="FontFamily" Value="FontAwesome6Solid900" />
         <Setter Property="Text" Value="{x:Static fa:IconFont.MagnifyingGlass}" />
+    </Style>
+    
+    <Style x:Key="SuccessIcon" TargetType="Span">
+        <Setter Property="FontFamily" Value="FontAwesome6Solid900" />
+        <Setter Property="Text" Value="{x:Static fa:IconFont.CircleCheck}" />
+    </Style>
+    
+    <Style x:Key="FailIcon" TargetType="Span">
+        <Setter Property="FontFamily" Value="FontAwesome6Solid900" />
+        <Setter Property="Text" Value="{x:Static fa:IconFont.CircleXmark}" />
     </Style>
     
     <Style x:Key="SearchEntry" TargetType="Entry">

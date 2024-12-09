@@ -83,6 +83,11 @@
       <MauiPlatformSpecificFolder Remove="Platforms\iOS\" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Include="Platforms\Windows\Behaviors\EditorNoScrollBehavior.cs" />
+      <None Include="Platforms\Windows\Behaviors\PlainEntryBehavior.cs" />
+    </ItemGroup>
+
     <!-- Disable this if you want hot reload -->
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
         <_MauiForceXamlCForDebug>true</_MauiForceXamlCForDebug>

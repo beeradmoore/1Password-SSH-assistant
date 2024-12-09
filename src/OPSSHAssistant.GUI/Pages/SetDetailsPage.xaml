@@ -4,29 +4,39 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:pages="clr-namespace:OPSSHAssistant.GUI.Pages;assembly=1Password SSH Assistant"
              xmlns:data="clr-namespace:OPSSHAssistant.Core.Data;assembly=OPSSHAssistant.Core"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              x:Class="OPSSHAssistant.GUI.Pages.SetDetailsPage"
              x:DataType="pages:SetDetailsPageModel"
-             Title="Set Details">
+             Title="Set Details"
+             >
     <Grid RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
-            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Spacing="16">
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Margin="16" Spacing="32">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="data:Item">
-                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" ColumnDefinitions="Auto,*" MaximumWidthRequest="500">
-                            <Label Grid.Row="0" Grid.Column="0" Text="SSH Key:" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Label Grid.Row="1" Grid.Column="0" Text="Username:" VerticalOptions="Center" FontAttributes="Bold" />
-                            <Label Grid.Row="2" Grid.Column="0" Text="Host:" VerticalOptions="Center" FontAttributes="Bold" />
+                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8" ColumnDefinitions="Auto,*" MaximumWidthRequest="500">
+                            <Label Grid.Row="0" Grid.Column="0" Text="SSH Key:" VerticalOptions="Center" FontFamily="OpenSansSemibold" />
+                            <Label Grid.Row="1" Grid.Column="0" Text="Username:" VerticalOptions="Center" FontFamily="OpenSansSemibold" FontAttributes="Bold" />
+                            <Label Grid.Row="2" Grid.Column="0" Text="Host:" VerticalOptions="Center" FontFamily="OpenSansSemibold" FontAttributes="Bold" />
                             
-                            <Entry Grid.Row="0" Grid.Column="1" Text="{Binding Title}" IsReadOnly="True"  />
-                            <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Username}" />
-                            <Entry Grid.Row="2" Grid.Column="1" Text="{Binding Host}" />
+                            <Label Grid.Row="0" Grid.Column="1" Text="{Binding Title}" />
+                            <Entry Grid.Row="1" Grid.Column="1" Text="{Binding Username}">
+                                <Entry.Behaviors>
+                                    <toolkit:SelectAllTextBehavior  />
+                                </Entry.Behaviors>
+                            </Entry>
+                            <Entry Grid.Row="2" Grid.Column="1" Text="{Binding Host}">
+                                <Entry.Behaviors>
+                                    <toolkit:SelectAllTextBehavior  />
+                                </Entry.Behaviors>
+                            </Entry>
                         </Grid>
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
         </ScrollView>
         
-        <Button Grid.Row="1" Text="Preview Changes" Command="{Binding GoToPreviewChangesCommand}" Padding="16" />
+        <Button Grid.Row="1" Text="Preview Changes" Command="{Binding GoToPreviewChangesCommand}" Padding="16" HorizontalOptions="Center" />
 
     </Grid>
 </ContentPage>

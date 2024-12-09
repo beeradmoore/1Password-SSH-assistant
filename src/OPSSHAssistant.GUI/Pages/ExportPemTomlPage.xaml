@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:OPSSHAssistant.GUI.Pages;assembly=1Password SSH Assistant"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             xmlns:fa="clr-namespace:OPSSHAssistant.GUI.FontAwesome;assembly=1Password SSH Assistant"
+             xmlns:behaviors="clr-namespace:OPSSHAssistant.GUI.Behaviors;assembly=1Password SSH Assistant"
+             x:Class="OPSSHAssistant.GUI.Pages.ExportPemTomlPage"
+             x:DataType="pages:ExportPemTomlPageModel"
+             Title="Export">
+    
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <toolkit:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        </ResourceDictionary>
+        
+        <Style x:Key="LabelSuccess" TargetType="Label">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontFamily" Value="FontAwesome6Solid900" />
+            <Setter Property="Text" Value="{x:Static fa:IconFont.CircleCheck}" />
+            <Setter Property="TextColor" Value="Green" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        
+        <Style x:Key="LabelFail" TargetType="Label">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontFamily" Value="FontAwesome6Solid900" />
+            <Setter Property="Text" Value="{x:Static fa:IconFont.CircleXmark}" />
+            <Setter Property="TextColor" Value="Red" />
+            <Setter Property="VerticalOptions" Value="Center" />
+        </Style>
+        
+    </ContentPage.Resources>
+    
+     <Grid RowDefinitions="*,Auto">
+        
+         <ScrollView Grid.Row="0" Padding="16" IsVisible="{Binding IsLoading, Converter={StaticResource InvertedBoolConverter}}">
+             <VerticalStackLayout Spacing="8">
+                 
+                 <HorizontalStackLayout>
+                     <Label Text="Public key export result " Style="{StaticResource Headline}" />
+                     <Label>
+                         <Label.Triggers>
+                             <DataTrigger TargetType="Label" Binding="{Binding PublicKeyExportSuccess}" Value="true">
+                                 <Setter Property="Style" Value="{StaticResource LabelSuccess}" />
+                             </DataTrigger>
+                             <DataTrigger TargetType="Label" Binding="{Binding PublicKeyExportSuccess}" Value="false">
+                                 <Setter Property="Style" Value="{StaticResource LabelFail}" />
+                             </DataTrigger>
+                         </Label.Triggers>
+                     </Label>
+                 </HorizontalStackLayout>
+                 <Editor IsReadOnly="True" Text="{Binding PublicKeyExportResultText}" AutoSize="TextChanges">
+                     <Editor.Behaviors>
+                         <behaviors:EditorNoScrollBehavior />
+                     </Editor.Behaviors>
+                 </Editor>
+                 
+                 <HorizontalStackLayout>
+                     <Label Text="SSH config result " Style="{StaticResource Headline}" />
+                     <Label>
+                         <Label.Triggers>
+                             <DataTrigger TargetType="Label" Binding="{Binding SshConfigSuccess}" Value="true">
+                                 <Setter Property="Style" Value="{StaticResource LabelSuccess}" />
+                             </DataTrigger>
+                             <DataTrigger TargetType="Label" Binding="{Binding SshConfigSuccess}" Value="false">
+                                 <Setter Property="Style" Value="{StaticResource LabelFail}" />
+                             </DataTrigger>
+                         </Label.Triggers>
+                     </Label>
+                 </HorizontalStackLayout>
+                 <Editor IsReadOnly="True" Text="{Binding SshConfigResultText}" AutoSize="TextChanges">
+                     <Editor.Behaviors>
+                         <behaviors:EditorNoScrollBehavior />
+                     </Editor.Behaviors>
+                 </Editor>
+                 
+                 <HorizontalStackLayout>
+                     <Label Text="SSH agent config result " Style="{StaticResource Headline}" />
+                     <Label>
+                         <Label.Triggers>
+                             <DataTrigger TargetType="Label" Binding="{Binding SshAgentConfigSuccess}" Value="true">
+                                 <Setter Property="Style" Value="{StaticResource LabelSuccess}" />
+                             </DataTrigger>
+                             <DataTrigger TargetType="Label" Binding="{Binding SshAgentConfigSuccess}" Value="false">
+                                 <Setter Property="Style" Value="{StaticResource LabelFail}" />
+                             </DataTrigger>
+                         </Label.Triggers>
+                     </Label>
+                 </HorizontalStackLayout>
+                 <Editor IsReadOnly="True" Text="{Binding SshAgentConfigResultText}" AutoSize="TextChanges">
+                     <Editor.Behaviors>
+                         <behaviors:EditorNoScrollBehavior />
+                     </Editor.Behaviors>
+                 </Editor>
+             </VerticalStackLayout>
+         </ScrollView>
+
+        
+        <VerticalStackLayout Grid.Row="1" HorizontalOptions="Center" VerticalOptions="Center" Spacing="8" IsVisible="{Binding IsLoading}">
+            <Label Text="Exporting..." />
+            <ActivityIndicator IsRunning="{Binding IsLoading}" />
+        </VerticalStackLayout>
+        
+        <VerticalStackLayout Grid.Row="1" HorizontalOptions="Center" VerticalOptions="Center" IsVisible="{Binding IsError}">
+            <Label Text="{Binding ErrorText}" />
+        </VerticalStackLayout>
+
+        <Button Grid.Row="1" Text="Back to start" Command="{Binding GoToStartPageCommand}" IsEnabled="{Binding GoToStartPageEnabled}" Padding="16" HorizontalOptions="Center" />
+
+        
+    </Grid>
+    
+</ContentPage>

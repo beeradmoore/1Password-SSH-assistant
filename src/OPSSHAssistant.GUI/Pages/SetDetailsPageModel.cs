@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -33,7 +34,7 @@ public partial class SetDetailsPageModel : ObservableObject
         {
             await page.Dispatcher.DispatchAsync(async () =>
             {
-                await page.Navigation.PushAsync(new PreviewChangesPage(_mode, _account, _vault, Items));
+                await page.Navigation.PushAsync(new PreviewPemTomlChangesPage(_mode, _account, _vault, Items));
             });
         }
     }
