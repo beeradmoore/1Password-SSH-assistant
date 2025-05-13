@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:pages="clr-namespace:OPSSHAssistant.GUI.Pages;assembly=1Password SSH Assistant"
+             xmlns:data="clr-namespace:OPSSHAssistant.Core.Data;assembly=OPSSHAssistant.Core"
+             xmlns:fa="clr-namespace:OPSSHAssistant.GUI.FontAwesome;assembly=1Password SSH Assistant"
+             x:Class="OPSSHAssistant.GUI.Pages.MainPage"
+             x:DataType="pages:MainPageModel">
+    
+    <CollectionView ItemsSource="{Binding MenuOptions}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" SelectionMode="Single">
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="data:MenuOption">
+                <Grid RowDefinitions="Auto,1" RowSpacing="8" Padding="0,8,0,0" ColumnDefinitions="*,Auto">
+                    <Label Grid.Row="0" Grid.Column="0" Text="{Binding Name}" Style="{StaticResource CollectionViewMenuText}" />
+                    <Label Grid.Row="0" Grid.Column="1" Text="{x:Static fa:IconFont.ChevronRight}" Style="{StaticResource CollectionViewMenuText}" FontFamily="FontAwesome6Solid900" />
+                    <BoxView Grid.Row="1" Grid.ColumnSpan="2" Style="{StaticResource CollectionViewSeperator}" />
+                </Grid>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+    </CollectionView>
+</ContentPage>

@@ -6,7 +6,7 @@ namespace OPSSHAssistant.GUI;
 public partial class CheckboxItem : ObservableObject
 {
     [ObservableProperty]
-    bool isChecked = false;
+    bool _isChecked = false;
 
     public Item Item { get; init; }
 

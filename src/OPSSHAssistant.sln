@@ -4,7 +4,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPSSHAssistant.CLI", "OPSSH
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPSSHAssistant.Core", "OPSSHAssistant.Core\OPSSHAssistant.Core.csproj", "{0A5DEC92-D0EA-43C3-9C4B-FE320DEC28FE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPSSHAssistant.GUI", "OPSSHAssistant.GUI\OPSSHAssistant.GUI.csproj", "{CF2A68FE-6FBF-47BE-92F7-47EE115AD113}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OPSSHAssistant.GUI", "OPSSHAssistant.GUI\OPSSHAssistant.GUI.csproj", "{8A0E9D9E-87BC-44CE-A900-0D7EC42FC492}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,9 +20,9 @@ Global
 		{0A5DEC92-D0EA-43C3-9C4B-FE320DEC28FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A5DEC92-D0EA-43C3-9C4B-FE320DEC28FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A5DEC92-D0EA-43C3-9C4B-FE320DEC28FE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CF2A68FE-6FBF-47BE-92F7-47EE115AD113}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CF2A68FE-6FBF-47BE-92F7-47EE115AD113}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CF2A68FE-6FBF-47BE-92F7-47EE115AD113}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CF2A68FE-6FBF-47BE-92F7-47EE115AD113}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A0E9D9E-87BC-44CE-A900-0D7EC42FC492}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A0E9D9E-87BC-44CE-A900-0D7EC42FC492}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A0E9D9E-87BC-44CE-A900-0D7EC42FC492}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A0E9D9E-87BC-44CE-A900-0D7EC42FC492}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
