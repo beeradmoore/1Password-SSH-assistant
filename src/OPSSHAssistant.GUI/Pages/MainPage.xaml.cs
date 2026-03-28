@@ -10,13 +10,13 @@ namespace OPSSHAssistant.GUI.Pages;
 public partial class MainPage : ContentPage
 {
     bool _hasAppeared = false;
-    
+
     public MainPage()
     {
         InitializeComponent();
         BindingContext = new MainPageModel(this);
     }
-    
+
     protected override void OnAppearing()
     {
         base.OnAppearing();

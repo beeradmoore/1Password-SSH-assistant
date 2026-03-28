@@ -16,8 +16,8 @@ public partial class MainPageModel : ObservableObject
     };
 
     [ObservableProperty]
-    MenuOption? _selectedItem = null;
-    
+    public partial MenuOption? SelectedItem { get; set; }
+
     public MainPageModel(MainPage page)
     {
         _page = new WeakReference<MainPage>(page);

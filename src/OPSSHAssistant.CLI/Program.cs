@@ -46,16 +46,16 @@ try
     {
         var accounts = await opManager.LoadAccountsAsync();
 
-        if (accounts is null || accounts.Count == 0)
+        if (accounts.Success == false || accounts.Data == null || accounts.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]Error: Could not list accounts.[/]");
             AnsiConsole.WriteLine(opManager.LastError);
             Environment.Exit(1);
         }
-        
+
         var accountsDictionary = new Dictionary<string, Account>();
         var accountOptions = new List<string>();
-        foreach (var account in accounts)
+        foreach (var account in accounts.Data)
         {
             accountsDictionary.Add(account.GetDisplayName(), account);
         }
@@ -83,7 +83,7 @@ try
             AnsiConsole.WriteLine(opManager.LastError);
             Environment.Exit(1);
         }
-        
+
         var vaultsDictionary = new Dictionary<string, Vault>();
         var vaultOptions = new List<string>();
         foreach (var vault in vaults)
@@ -93,7 +93,7 @@ try
         vaultOptions.AddRange(vaultsDictionary.Keys);
         vaultOptions.Add("Back");
         vaultOptions.Add("Quit");
-        
+
         while (true)
         {
             var selectVaultPrompt = new SelectionPrompt<string>()
@@ -112,7 +112,7 @@ try
             {
                 Environment.Exit(0);
             }
-            
+
             var selectedVault = vaultsDictionary[selectVaultResponse];
 
             var items = await opManager.LoadItemsAsync(selectedAccount, selectedVault);
@@ -122,25 +122,25 @@ try
                 AnsiConsole.WriteLine(opManager.LastError);
                 Environment.Exit(1);
             }
-            
+
             if (items.Count == 0)
             {
                 AnsiConsoleHelper.DisplayErrorAndContinue("No SSH keys.");
                 break;
             }
-            
+
             var itemsDictionary = new Dictionary<string, Item>();
             foreach (var item in items)
             {
                 itemsDictionary.Add(item.GetDisplayName(), item);
             }
-            
+
             var selectedItems = AnsiConsole.Prompt(
                 new MultiSelectionPrompt<string>()
                     .Title("Select items you want to generate SSH configs for:")
                     .PageSize(10)
                     .InstructionsText(
-                        "[grey](Press [blue]<space>[/] to toggle an item, " + 
+                        "[grey](Press [blue]<space>[/] to toggle an item, " +
                         "[green]<enter>[/] to generate configs)[/]")
                     .AddChoices(itemsDictionary.Keys)
             );
@@ -149,7 +149,7 @@ try
             {
                 return;
             }
-            
+
             var selectedItemObjects = new List<Item>();
             foreach (string selectedItem in selectedItems)
             {
@@ -201,9 +201,9 @@ try
                 {
                     AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
                 }
-                
+
                 var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
-                
+
                 Console.WriteLine("\n\n");
                 Console.WriteLine("The following config needs to appended to:");
                 Console.WriteLine(opManager.GetSSHConfigPath());
@@ -218,7 +218,7 @@ try
             {
                 AnsiConsole.Markup("[red]SSH directory does not exist. Skipping public key generation.[/]");
             }
-            
+
             var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
 
             Console.WriteLine();
@@ -227,9 +227,9 @@ try
             Console.WriteLine("\n\n");
             Console.WriteLine(agentToml);
             Console.WriteLine("\n\n");
-            
-            
-                
+
+
+
             Environment.Exit(0);
 
         }

@@ -27,7 +27,7 @@
             </Entry>
         </Grid>
         
-        <CollectionView Grid.Row="1" ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}" SelectionMode="Single">
+        <CollectionView Grid.Row="1" ItemsSource="{Binding FilteredAccounts}" SelectedItem="{Binding SelectedAccount, Mode=TwoWay}" SelectionMode="Single">
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="data:Account">
                     <Grid RowDefinitions="Auto,1" RowSpacing="8" Padding="0,8,0,0" ColumnDefinitions="*,Auto" HorizontalOptions="Fill">

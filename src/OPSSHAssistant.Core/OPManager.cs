@@ -29,18 +29,18 @@ public class OPManager
             {
 	            return true;
             }
-            
+
             Debugger.Break();
-            
+
             // Fails with exit code 141
-            
+
             // Sometimes this needs to run twice
             result = await Cli.Wrap("op")
 	            .WithValidation(CommandResultValidation.None)
 	            .ExecuteBufferedAsync().ConfigureAwait(false);
 
             Debugger.Break();
-            
+
             if (result.IsSuccess)
             {
 	            return true;
@@ -56,35 +56,18 @@ public class OPManager
         return false;
     }
 
-    public async Task<List<Account>?> LoadAccountsAsync()
+    public async Task<OPResult<List<Account>>> LoadAccountsAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-	        /*
-	        var stdOutBuffer = new StringBuilder();
-	        var stdErrBuffer = new StringBuilder();
-
-
-	        var result1 = await Cli.Wrap("ls")
-		        .WithArguments("-la")
-		        .WithStandardOutputPipe(PipeTarget.ToStringBuilder(stdOutBuffer))
-		        .WithStandardErrorPipe(PipeTarget.ToStringBuilder(stdErrBuffer))
-		        .ExecuteAsync();
-
-	        Console.WriteLine(stdOutBuffer.ToString());
-	        Console.WriteLine(stdErrBuffer.ToString());
-	        
-	        Debugger.Break();
-	        */
-	        
             var result = await Cli.Wrap("op")
                 .WithArguments("account list --format json --no-color")
-                .ExecuteBufferedAsync(Encoding.UTF8);
+                .ExecuteBufferedAsync(Encoding.UTF8, cancellationToken);
 
             if (result.IsSuccess == false)
             {
                 var stringBuilder = new StringBuilder();
-                
+
                 if (String.IsNullOrEmpty(result.StandardOutput) == false)
                 {
                     stringBuilder.AppendLine(result.StandardOutput);
@@ -94,27 +77,27 @@ public class OPManager
                 {
                     stringBuilder.AppendLine(result.StandardError);
                 }
-                
-                LastError = stringBuilder.ToString();
-                
-                return null;
+
+                return OPResult<List<Account>>.FromFailed(stringBuilder.ToString());
             }
-            
+
             var accounts = JsonSerializer.Deserialize<List<Account>>(result.StandardOutput);
             if (accounts is null)
             {
-                LastError = "Could not load accounts. Are you sure enabled 1Password CLI from within the 1Password desktop application?";
-                return null;
+                return OPResult<List<Account>>.FromFailed("Could not load accounts. Are you sure enabled 1Password CLI from within the 1Password desktop application?");
             }
-            
-            accounts.Sort((a, b) => a.Email.CompareTo(b.Email));
 
-            return accounts;
+            accounts.Sort((a, b) => String.Compare(a.Email, b.Email, StringComparison.Ordinal));
+
+            return OPResult<List<Account>>.FromSuccess(accounts);
+        }
+        catch (OperationCanceledException _)
+        {
+            return OPResult<List<Account>>.FromCancelled();
         }
         catch (Exception err)
         {
-            LastError = err.Message;
-            return null;
+            return OPResult<List<Account>>.FromFailed(err.Message);;
         }
     }
 
@@ -125,11 +108,11 @@ public class OPManager
 		    var result = await Cli.Wrap("op")
 			    .WithArguments($"vault list --account {account.AccountUuid} --format json --no-color")
 			    .ExecuteBufferedAsync(Encoding.UTF8);
-		    
+
 		    if (result.IsSuccess == false)
 		    {
 			    var stringBuilder = new StringBuilder();
-	        
+
 			    if (String.IsNullOrEmpty(result.StandardOutput) == false)
 			    {
 				    stringBuilder.AppendLine(result.StandardOutput);
@@ -139,19 +122,19 @@ public class OPManager
 			    {
 				    stringBuilder.AppendLine(result.StandardError);
 			    }
-	        
+
 			    LastError = stringBuilder.ToString();
-	        
+
 			    return null;
 		    }
-		    
+
 		    var vaults = JsonSerializer.Deserialize<List<Vault>>(result.StandardOutput);
 		    if (vaults is null)
 		    {
 			    LastError = "Could not load vaults.";
 			    return null;
 		    }
-		    
+
 		    vaults.Sort((a, b) => a.Name.CompareTo(b.Name));
 
 		    return vaults;
@@ -170,13 +153,13 @@ public class OPManager
 		    LastError = "Account not found.";
 		    return null;
 	    }
-	    
+
 	    if (vault is null)
 	    {
 		    LastError = "Vault not found.";
 		    return null;
 	    }
-	    
+
 	    try
 	    {
 		    var result = await Cli.Wrap("op")
@@ -186,7 +169,7 @@ public class OPManager
 		    if (result.IsSuccess == false)
 		    {
 			    var stringBuilder = new StringBuilder();
-	        
+
 			    if (String.IsNullOrEmpty(result.StandardOutput) == false)
 			    {
 				    stringBuilder.AppendLine(result.StandardOutput);
@@ -196,12 +179,12 @@ public class OPManager
 			    {
 				    stringBuilder.AppendLine(result.StandardError);
 			    }
-	        
+
 			    LastError = stringBuilder.ToString();
-	        
+
 			    return null;
 		    }
-		    
+
 		    var items = JsonSerializer.Deserialize<List<Item>>(result.StandardOutput);
 		    if (items is not null)
 		    {
@@ -215,7 +198,7 @@ public class OPManager
 		    return null;
 	    }
     }
-    
+
 
 	public async Task<bool?> LoadPublicKeysToExportAsync(Account account, Vault vault, List<Item> items)
 	{
@@ -223,16 +206,16 @@ public class OPManager
 		{
 			return false;
 		}
-		
+
 		try
 		{
 			var invalidCharacters = new List<char>();
 			invalidCharacters.AddRange(Path.GetInvalidPathChars());
 			invalidCharacters.AddRange(Path.GetInvalidFileNameChars());
 			invalidCharacters = invalidCharacters.Distinct().ToList();
-			
+
 			var needsAnyExport = false;
-			
+
 			foreach (var item in items)
 			{
 				var publicKey = await LoadPublicKeyAsync(account, vault, item);
@@ -249,7 +232,7 @@ public class OPManager
 				}
 
 				item.PublicKey = publicKey.Value;
-				
+
 				var fileName = $"{item.Title}";
 				foreach (var invalidCharacter in invalidCharacters)
 				{
@@ -271,7 +254,7 @@ public class OPManager
 				foreach (var publicKeyFileName in publicKeyFileNames)
 				{
 					var fullPath = Path.Combine(GetSSHPath(), publicKeyFileName);
-					
+
 					if (File.Exists(fullPath))
 					{
 						var tempPublicKey = File.ReadAllText(fullPath);
@@ -310,7 +293,7 @@ public class OPManager
 			return null;
 		}
 	}
-	
+
 	public async Task<PublicKey?> LoadPublicKeyAsync(Account account, Vault vault, Item item)
 	{
 		try
@@ -353,13 +336,13 @@ public class OPManager
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh");
 			//return "~/.config/1Password/ssh/agent.toml";
 		}
-		
+
 		throw new Exception("Could not determine 1Password agent.toml path.");
 	}
 	public string GetAgentTomlPath()
 	{
 		return Path.Combine(GetAgentTomlDirectory(), "agent.toml");
-		
+
 		/*
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
@@ -375,7 +358,7 @@ public class OPManager
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh", "agent.toml");
 			//return "~/.config/1Password/ssh/agent.toml";
 		}
-		
+
 		throw new Exception("Could not determine 1Password agent.toml path.");
 		*/
 	}
@@ -396,10 +379,10 @@ public class OPManager
 		{
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
 		}
-		
+
 		throw new Exception("Could not determine SSH config path.");
 	}
-	
+
 	public string GetSSHConfigPath()
 	{
 		return Path.Combine(GetSSHPath(), "config");
@@ -408,7 +391,7 @@ public class OPManager
 	public string GenerateUpdatedAgentToml(Account account, Vault vault, List<Item> items)
 	{
 		var agentTomlStringBuilder = new StringBuilder();
-				
+
 		foreach (var item in items)
 		{
 			agentTomlStringBuilder.AppendLine("[[ssh-keys]]");
@@ -420,11 +403,11 @@ public class OPManager
 
 		return agentTomlStringBuilder.ToString();
 	}
-	
+
 	public string GenerateUpdatedSSHConfig(Account account, Vault vault, List<Item> items)
 	{
 		var sshConfigStringBuilder = new StringBuilder();
-				
+
 		foreach (var storedItemObject in items)
 		{
 			sshConfigStringBuilder.AppendLine($"Host {storedItemObject.Host}");
@@ -452,14 +435,14 @@ public class OPManager
 
 		return sshConfigStringBuilder.ToString();
 	}
-	
-	
+
+
 	public async Task<PreparedExport> PrepareExportAsync(Account selectedAccount, Vault selectedVault, List<Item> selectedItemObjects)
 	{
 		var preparedExport = new PreparedExport();
 
 		var anyPublicKeysNeedExport = await LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
-        
+
 		if (anyPublicKeysNeedExport is null)
 		{
 			preparedExport.Success = false;
@@ -467,9 +450,9 @@ public class OPManager
 			preparedExport.ErrorMessageDetails = LastError;
 			return preparedExport;
 		}
-        
+
 		if (anyPublicKeysNeedExport == true)
-		{           
+		{
 			foreach (var selectedItemObject in selectedItemObjects)
 			{
 				if (selectedItemObject.NeedsExport)
@@ -481,15 +464,15 @@ public class OPManager
 
 		preparedExport.SSHConfigToBeCreated = (File.Exists(GetSSHConfigPath()) == false);
 		preparedExport.SSHConfigToAppend = GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
-        
+
 		preparedExport.AgentTomlToBeCreated = (File.Exists(GetAgentTomlPath()) == false);
 		preparedExport.AgentTomlToAppend = GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
 
 		preparedExport.Success = true;
-        
+
 		return preparedExport;
 	}
-	
+
 	public async Task<ExportResult> PerformExportAsync(PreparedExport preparedExport)
 	{
 		var exportResult = new ExportResult();
@@ -521,7 +504,7 @@ public class OPManager
 				{
 					Directory.CreateDirectory(GetSSHPath());
 				}
-				
+
 				await File.WriteAllTextAsync(GetSSHConfigPath(), preparedExport.SSHConfigToAppend);
 			}
 			catch (Exception err)
@@ -552,7 +535,7 @@ public class OPManager
 				{
 					Directory.CreateDirectory(GetAgentTomlDirectory());
 				}
-				
+
 				await File.WriteAllTextAsync(GetAgentTomlPath(), preparedExport.AgentTomlToAppend);
 			}
 			catch (Exception err)
