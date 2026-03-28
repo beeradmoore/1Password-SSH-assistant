@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +15,16 @@ public partial class SelectAccountPage : ContentPage
     {
         InitializeComponent();
         BindingContext = new SelectAccountPageModel(this, mode);
+    }
+
+    protected override void OnNavigatedFrom(NavigatedFromEventArgs args)
+    {
+        base.OnNavigatedFrom(args);
+
+        if (BindingContext is SelectAccountPageModel model)
+        {
+            model.Cancel();
+        }
     }
 
     bool _hasAppeared = false;

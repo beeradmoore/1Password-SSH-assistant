@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -11,13 +12,11 @@ namespace OPSSHAssistant.Core;
 
 public class OPManager
 {
-    public string LastError { get; set; } = string.Empty;
-
     public OPManager()
     {
     }
 
-    public async Task<bool> CheckFor1PasswordCLIAsync()
+    public async Task<OPResult<bool>> CheckFor1PasswordCLIAsync()
     {
         try
         {
@@ -27,7 +26,7 @@ public class OPManager
 
             if (result.IsSuccess)
             {
-	            return true;
+                return OPResult<bool>.FromSuccess(true);
             }
 
             Debugger.Break();
@@ -43,17 +42,29 @@ public class OPManager
 
             if (result.IsSuccess)
             {
-	            return true;
+                return OPResult<bool>.FromSuccess(true);
             }
+
+
+            var stringBuilder = new StringBuilder();
+
+            if (String.IsNullOrEmpty(result.StandardOutput) == false)
+            {
+                stringBuilder.AppendLine(result.StandardOutput);
+            }
+
+            if (String.IsNullOrEmpty(result.StandardError) == false)
+            {
+                stringBuilder.AppendLine(result.StandardError);
+            }
+
+            throw new Exception(stringBuilder.ToString());
         }
         catch (Exception err)
         {
-	        LastError = err.Message;
             Debug.WriteLine($"Error: {err.Message}");
-            return false;
+            return OPResult<bool>.FromFailed(err.Message);
         }
-
-        return false;
     }
 
     public async Task<OPResult<List<Account>>> LoadAccountsAsync(CancellationToken cancellationToken = default)
@@ -81,7 +92,7 @@ public class OPManager
                 return OPResult<List<Account>>.FromFailed(stringBuilder.ToString());
             }
 
-            var accounts = JsonSerializer.Deserialize<List<Account>>(result.StandardOutput);
+            var accounts = JsonSerializer.Deserialize<List<Account>>(result.StandardOutput, SourceGenerationContext.Default.ListAccount);
             if (accounts is null)
             {
                 return OPResult<List<Account>>.FromFailed("Could not load accounts. Are you sure enabled 1Password CLI from within the 1Password desktop application?");
@@ -91,7 +102,7 @@ public class OPManager
 
             return OPResult<List<Account>>.FromSuccess(accounts);
         }
-        catch (OperationCanceledException _)
+        catch (OperationCanceledException)
         {
             return OPResult<List<Account>>.FromCancelled();
         }
@@ -101,7 +112,7 @@ public class OPManager
         }
     }
 
-    public async Task<List<Vault>?> LoadVaultsAsync(Account account)
+    public async Task<OPResult<List<Vault>>> LoadVaultsAsync(Account account)
     {
 	    try
 	    {
@@ -123,41 +134,36 @@ public class OPManager
 				    stringBuilder.AppendLine(result.StandardError);
 			    }
 
-			    LastError = stringBuilder.ToString();
-
-			    return null;
+			    return OPResult<List<Vault>>.FromFailed(stringBuilder.ToString());
 		    }
 
-		    var vaults = JsonSerializer.Deserialize<List<Vault>>(result.StandardOutput);
+		    var vaults = JsonSerializer.Deserialize<List<Vault>>(result.StandardOutput, SourceGenerationContext.Default.ListVault);
 		    if (vaults is null)
 		    {
-			    LastError = "Could not load vaults.";
-			    return null;
+                return OPResult<List<Vault>>.FromFailed("Could not load vaults.");
 		    }
 
-		    vaults.Sort((a, b) => a.Name.CompareTo(b.Name));
+		    vaults.Sort((a, b) => a.Name.CompareTo(b.Name, StringComparison.InvariantCultureIgnoreCase));
 
-		    return vaults;
+		    return OPResult<List<Vault>>.FromSuccess(vaults);
 	    }
 	    catch (Exception err)
 	    {
-		    LastError = err.Message;
-		    return null;
+            Debug.WriteLine($"Error: {err.Message}");
+		    return OPResult<List<Vault>>.FromFailed(err.Message);
 	    }
     }
 
-    public async Task<List<Item>?> LoadItemsAsync(Account? account, Vault? vault)
+    public async Task<OPResult<List<Item>>> LoadItemsAsync(Account? account, Vault? vault)
     {
 	    if (account is null)
 	    {
-		    LastError = "Account not found.";
-		    return null;
+		    return OPResult<List<Item>>.FromFailed("Account not found.");
 	    }
 
 	    if (vault is null)
 	    {
-		    LastError = "Vault not found.";
-		    return null;
+            return OPResult<List<Item>>.FromFailed("Vault not found.");
 	    }
 
 	    try
@@ -180,31 +186,32 @@ public class OPManager
 				    stringBuilder.AppendLine(result.StandardError);
 			    }
 
-			    LastError = stringBuilder.ToString();
-
-			    return null;
+                return OPResult<List<Item>>.FromFailed(stringBuilder.ToString());
 		    }
 
-		    var items = JsonSerializer.Deserialize<List<Item>>(result.StandardOutput);
-		    if (items is not null)
-		    {
-			    items.Sort((a, b) => a.Title.CompareTo(b.Title));
-		    }
-		    return items;
+		    var items = JsonSerializer.Deserialize<List<Item>>(result.StandardOutput, SourceGenerationContext.Default.ListItem);
+
+            if (items is null)
+            {
+                throw new Exception("Could not deserialize items.");
+            }
+
+            items.Sort((a, b) => a.Title.CompareTo(b.Title, StringComparison.InvariantCultureIgnoreCase));
+
+            return OPResult<List<Item>>.FromSuccess(items);
 	    }
 	    catch (Exception err)
 	    {
-		    LastError = err.Message;
-		    return null;
+            return OPResult<List<Item>>.FromFailed(err.Message);
 	    }
     }
 
 
-	public async Task<bool?> LoadPublicKeysToExportAsync(Account account, Vault vault, List<Item> items)
+	public async Task<OPResult<bool>> LoadPublicKeysToExportAsync(Account account, Vault vault, List<Item> items)
 	{
 		if (items.Count == 0)
 		{
-			return false;
+			return OPResult<bool>.FromFailed("No items found.");
 		}
 
 		try
@@ -219,19 +226,17 @@ public class OPManager
 			foreach (var item in items)
 			{
 				var publicKey = await LoadPublicKeyAsync(account, vault, item);
-				if (publicKey is null)
+				if (publicKey.Success == false || publicKey.Data is null)
 				{
-					LastError = $"Error loading public key for {item.Title}.";
-					return null;
+					return OPResult<bool>.FromFailed($"Error loading public key for {item.Title}.");
 				}
 
-				if (string.IsNullOrEmpty(publicKey.Value))
+				if (string.IsNullOrEmpty(publicKey.Data.Value))
 				{
-					LastError = $"{item.Title} does not have a public key.";
-					return null;
+                    return OPResult<bool>.FromFailed($"{item.Title} does not have a public key.");
 				}
 
-				item.PublicKey = publicKey.Value;
+				item.PublicKey = publicKey.Data.Value;
 
 				var fileName = $"{item.Title}";
 				foreach (var invalidCharacter in invalidCharacters)
@@ -246,9 +251,9 @@ public class OPManager
 				var publicKeyFileNames = new string[]
 				{
 					$"{fileName}.pub",
-					$"{fileName}_{DateTime.Now.ToString("yyyy-MM-dd")}.pub",
-					$"{fileName}_{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")}.pub",
-					$"{fileName}_{Guid.NewGuid().ToString("D")}.pub",
+					$"{fileName}_{DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}.pub",
+					$"{fileName}_{DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture)}.pub",
+					$"{fileName}_{Guid.NewGuid().ToString("D", CultureInfo.InvariantCulture)}.pub",
 				};
 
 				foreach (var publicKeyFileName in publicKeyFileNames)
@@ -257,7 +262,7 @@ public class OPManager
 
 					if (File.Exists(fullPath))
 					{
-						var tempPublicKey = File.ReadAllText(fullPath);
+						var tempPublicKey = await File.ReadAllTextAsync(fullPath);
 						if (tempPublicKey == item.PublicKey)
 						{
 							item.PublicKeyPath = fullPath;
@@ -280,21 +285,19 @@ public class OPManager
 
 				if (string.IsNullOrEmpty(item.PublicKeyPath))
 				{
-					LastError = $"Could not find suitable place to export public key for {item.Title}.";
-					return null;
+                    return OPResult<bool>.FromFailed($"Could not find suitable place to export public key for {item.Title}.");
 				}
 			}
 
-			return needsAnyExport;
+			return OPResult<bool>.FromSuccess(needsAnyExport);
 		}
 		catch (Exception err)
 		{
-			LastError = err.Message;
-			return null;
+			return OPResult<bool>.FromFailed(err.Message);
 		}
 	}
 
-	public async Task<PublicKey?> LoadPublicKeyAsync(Account account, Vault vault, Item item)
+	public async Task<OPResult<PublicKey>> LoadPublicKeyAsync(Account account, Vault vault, Item item)
 	{
 		try
 		{
@@ -302,20 +305,18 @@ public class OPManager
 				.WithArguments($"item get {item.Id} --vault {vault.Id} --account {account.AccountUuid} --fields \"public_key\" --format json --no-color")
 				.ExecuteBufferedAsync(Encoding.UTF8);
 
-			var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput);
+			var publicKey = JsonSerializer.Deserialize<PublicKey>(result.StandardOutput, SourceGenerationContext.Default.PublicKey);
 
 			if (publicKey is null)
 			{
-				LastError = "Could not load public key.";
-				return null;
+				return OPResult<PublicKey>.FromFailed("Could not load public key.");
 			}
 
-			return publicKey;
+			return OPResult<PublicKey>.FromSuccess(publicKey);
 		}
 		catch (Exception err)
 		{
-			LastError = err.Message;
-			return null;
+            return OPResult<PublicKey>.FromFailed(err.Message);
 		}
 	}
 
@@ -339,28 +340,10 @@ public class OPManager
 
 		throw new Exception("Could not determine 1Password agent.toml path.");
 	}
+
 	public string GetAgentTomlPath()
 	{
 		return Path.Combine(GetAgentTomlDirectory(), "agent.toml");
-
-		/*
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-		{
-			return Environment.ExpandEnvironmentVariables(@"%LOCALAPPDATA%\1Password\config\ssh\agent.toml");
-		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-		{
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh", "agent.toml");
-			//return "~/.config/1Password/ssh/agent.toml";
-		}
-		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-		{
-			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "1Password", "ssh", "agent.toml");
-			//return "~/.config/1Password/ssh/agent.toml";
-		}
-
-		throw new Exception("Could not determine 1Password agent.toml path.");
-		*/
 	}
 
 	public string GetSSHPath()
@@ -395,9 +378,9 @@ public class OPManager
 		foreach (var item in items)
 		{
 			agentTomlStringBuilder.AppendLine("[[ssh-keys]]");
-			agentTomlStringBuilder.AppendLine($"account = \"{account.AccountUuid}\"");
-			agentTomlStringBuilder.AppendLine($"vault = \"{vault.Name}\"");
-			agentTomlStringBuilder.AppendLine($"item = \"{item.Title}\"");
+			agentTomlStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"account = \"{account.AccountUuid}\"");
+			agentTomlStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"vault = \"{vault.Name}\"");
+			agentTomlStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"item = \"{item.Title}\"");
 			agentTomlStringBuilder.AppendLine("");
 		}
 
@@ -410,10 +393,10 @@ public class OPManager
 
 		foreach (var storedItemObject in items)
 		{
-			sshConfigStringBuilder.AppendLine($"Host {storedItemObject.Host}");
-			sshConfigStringBuilder.AppendLine($"  User {storedItemObject.Username}");
-			sshConfigStringBuilder.AppendLine($"  PreferredAuthentications publickey");
-			sshConfigStringBuilder.AppendLine($"  IdentityFile \"{storedItemObject.PublicKeyPath}\"");
+			sshConfigStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"Host {storedItemObject.Host}");
+			sshConfigStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"  User {storedItemObject.Username}");
+			sshConfigStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"  PreferredAuthentications publickey");
+			sshConfigStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"  IdentityFile \"{storedItemObject.PublicKeyPath}\"");
 			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 			{
                 // Windows OpenSSH agent no longer wants this line appended.
@@ -423,13 +406,13 @@ public class OPManager
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
                      RuntimeInformation.RuntimeIdentifier.StartsWith("maccatalyst", StringComparison.OrdinalIgnoreCase))
 			{
-				sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
+				sshConfigStringBuilder.AppendLine("  IdentityAgent \"~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock\"");
 			}
 			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 			{
-				sshConfigStringBuilder.AppendLine($"  IdentityAgent \"~/.1password/agent.sock\"");
+				sshConfigStringBuilder.AppendLine("  IdentityAgent \"~/.1password/agent.sock\"");
 			}
-			sshConfigStringBuilder.AppendLine($"  IdentitiesOnly yes");
+			sshConfigStringBuilder.AppendLine("  IdentitiesOnly yes");
 			sshConfigStringBuilder.AppendLine();
 		}
 
@@ -443,15 +426,15 @@ public class OPManager
 
 		var anyPublicKeysNeedExport = await LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
 
-		if (anyPublicKeysNeedExport is null)
+		if (anyPublicKeysNeedExport.Success == false)
 		{
 			preparedExport.Success = false;
 			preparedExport.ErrorMessage = "Could not detect public keys to export";
-			preparedExport.ErrorMessageDetails = LastError;
+			preparedExport.ErrorMessageDetails = anyPublicKeysNeedExport.ErrorMessage;
 			return preparedExport;
 		}
 
-		if (anyPublicKeysNeedExport == true)
+		if (anyPublicKeysNeedExport.Data == true)
 		{
 			foreach (var selectedItemObject in selectedItemObjects)
 			{

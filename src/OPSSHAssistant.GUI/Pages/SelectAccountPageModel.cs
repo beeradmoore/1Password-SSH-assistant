@@ -10,67 +10,94 @@ namespace OPSSHAssistant.GUI.Pages;
 
 public partial class SelectAccountPageModel : ObservableObject
 {
-    WeakReference<SelectAccountPage> _page;
+    WeakReference<SelectAccountPage> _weakPage;
     MenuMode _mode;
 
+    // Use a different list for account
     readonly List<Account> _accounts = new List<Account>();
 
-    public ObservableCollection<Account> Accounts { get; } = new ObservableCollection<Account>();
+    public ObservableCollection<Account> FilteredAccounts { get; } = new ObservableCollection<Account>();
 
     [ObservableProperty]
-    Account? _selectedAccount = null;
-    
-    [ObservableProperty]
-    bool _isLoading = false;
-    
-    [ObservableProperty]
-    bool _isError = false;
+    public partial Account? SelectedAccount { get; set; }
 
     [ObservableProperty]
-    string _errorText = "An unknown error occured";
+    public partial bool IsLoading { get; set; }
 
     [ObservableProperty]
-    string _searchText = string.Empty;
-    
+    public partial bool IsError { get; set; }
+
+    [ObservableProperty]
+    public partial string ErrorText { get; set; } = "An unknown error occured";
+
+    [ObservableProperty]
+    public partial string SearchText { get; set; } = string.Empty;
+
+    CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
     public SelectAccountPageModel(SelectAccountPage page, MenuMode mode)
     {
-        _page = new WeakReference<SelectAccountPage>(page);
+        _weakPage = new WeakReference<SelectAccountPage>(page);
         _mode = mode;
+    }
+
+    public void Cancel()
+    {
+        _cancellationTokenSource.Cancel();
     }
 
     internal async Task LoadAccountsAsync()
     {
         _accounts.Clear();
-        Accounts.Clear();
+        FilteredAccounts.Clear();
         SelectedAccount = null;
 
         IsError = false;
         IsLoading = true;
 
-        var loadedAccounts = await App.OPManager.LoadAccountsAsync().ConfigureAwait(false);
+        var result = await App.OPManager.LoadAccountsAsync(_cancellationTokenSource.Token).ConfigureAwait(false);
 
         IsLoading = false;
 
-        if (loadedAccounts is null || loadedAccounts.Count == 0)
+        if (result.Cancelled)
         {
-            if (_page.TryGetTarget(out SelectAccountPage? selectAccountPage))
+            return;
+        }
+
+        if (result.Success == false)
+        {
+            if (_weakPage.TryGetTarget(out var page))
             {
-                await selectAccountPage.Dispatcher.DispatchAsync(async () =>
+                await page.Dispatcher.DispatchAsync(async () =>
                 {
-                    await selectAccountPage.DisplayAlert("Error", $"Could not list accounts.\n{App.OPManager.LastError}", "Okay");
+                    await page.DisplayAlert("Error", $"Could not list accounts.\n{result.ErrorMessage}", "Okay");
                 });
 
                 IsError = true;
                 ErrorText = "Could not list accounts";
             }
+
             return;
         }
 
-        _accounts.AddRange(loadedAccounts);
-        
+        if (result.Data is null || result.Data.Count == 0)
+        {
+            if (_weakPage.TryGetTarget(out var page))
+            {
+                await page.Dispatcher.DispatchAsync(async () =>
+                {
+                    await page.DisplayAlert("Error", $"Could not list accounts.", "Okay");
+                });
+            }
+
+            return;
+        }
+
+        _accounts.AddRange(result.Data);
+
         FilterAccounts(SearchText);
     }
-    
+
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
@@ -88,26 +115,26 @@ public partial class SelectAccountPageModel : ObservableObject
 
             var selectedAccount = SelectedAccount;
             SelectedAccount = null;
-            
-            if (_page.TryGetTarget(out SelectAccountPage? selectAccountPage))
+
+            if (_weakPage.TryGetTarget(out var page))
             {
-                selectAccountPage.Navigation.PushAsync(new SelectVaultPage(_mode, selectedAccount));
+                page.Navigation.PushAsync(new SelectVaultPage(_mode, selectedAccount));
             }
         }
     }
 
     void FilterAccounts(string searchText)
     {
-        if (_page.TryGetTarget(out SelectAccountPage? page))
+        if (_weakPage.TryGetTarget(out var page))
         {
             page.Dispatcher.Dispatch(() =>
             {
                 if (string.IsNullOrWhiteSpace(searchText))
                 {
-                    Accounts.Clear();
+                    FilteredAccounts.Clear();
                     foreach (var account in _accounts)
                     {
-                        Accounts.Add(account);
+                        FilteredAccounts.Add(account);
                     }
 
                     return;
@@ -117,17 +144,17 @@ public partial class SelectAccountPageModel : ObservableObject
                 {
                     if (account.Email.Contains(searchText, StringComparison.OrdinalIgnoreCase))
                     {
-                        if (Accounts.Contains(account))
+                        if (FilteredAccounts.Contains(account))
                         {
                             // NO-OP
                         }
                         else
                         {
-                            for (var i = 0; i < Accounts.Count; ++i)
+                            for (var i = 0; i < FilteredAccounts.Count; ++i)
                             {
-                                if (Accounts[i].Email.CompareTo(account.Email) < 0)
+                                if (FilteredAccounts[i].Email.CompareTo(account.Email, StringComparison.InvariantCultureIgnoreCase) < 0)
                                 {
-                                    Accounts.Insert(i, account);
+                                    FilteredAccounts.Insert(i, account);
                                     break;
                                 }
                             }
@@ -135,11 +162,10 @@ public partial class SelectAccountPageModel : ObservableObject
                     }
                     else
                     {
-                        Accounts.Remove(account);
+                        FilteredAccounts.Remove(account);
                     }
                 }
             });
         }
     }
-
 }

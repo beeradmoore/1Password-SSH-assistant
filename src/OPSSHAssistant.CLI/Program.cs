@@ -15,7 +15,8 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false &&
 }
 
 var opManager = new OPManager();
-if (await opManager.CheckFor1PasswordCLIAsync() == false)
+var opCLIResult = await opManager.CheckFor1PasswordCLIAsync();
+if (opCLIResult.Success == false || opCLIResult.Data != true)
 {
     Console.WriteLine("1Password CLI could not be found. Please ensure it is installed and enabled by following the instructions here, https://developer.1password.com/docs/cli/get-started/");
     Debugger.Break();
@@ -49,7 +50,7 @@ try
         if (accounts.Success == false || accounts.Data == null || accounts.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]Error: Could not list accounts.[/]");
-            AnsiConsole.WriteLine(opManager.LastError);
+            AnsiConsole.WriteLine(accounts.ErrorMessage);
             Environment.Exit(1);
         }
 
@@ -77,16 +78,16 @@ try
         var selectedAccount = accountsDictionary[selectAccountResponse];
 
         var vaults = await opManager.LoadVaultsAsync(selectedAccount);
-        if (vaults is null || vaults.Count == 0)
+        if (vaults.Success == false || vaults.Data is null || vaults.Data.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]Error: Could not list vaules.[/]");
-            AnsiConsole.WriteLine(opManager.LastError);
+            AnsiConsole.WriteLine(vaults.ErrorMessage);
             Environment.Exit(1);
         }
 
         var vaultsDictionary = new Dictionary<string, Vault>();
         var vaultOptions = new List<string>();
-        foreach (var vault in vaults)
+        foreach (var vault in vaults.Data)
         {
             vaultsDictionary.Add(vault.GetDisplayName(), vault);
         }
@@ -116,21 +117,21 @@ try
             var selectedVault = vaultsDictionary[selectVaultResponse];
 
             var items = await opManager.LoadItemsAsync(selectedAccount, selectedVault);
-            if (items is null)
+            if (items.Success == false || items.Data is null)
             {
                 AnsiConsole.MarkupLine("[red]Error: Could not list items.[/]");
-                AnsiConsole.WriteLine(opManager.LastError);
+                AnsiConsole.WriteLine(items.ErrorMessage);
                 Environment.Exit(1);
             }
 
-            if (items.Count == 0)
+            if (items.Data.Count == 0)
             {
                 AnsiConsoleHelper.DisplayErrorAndContinue("No SSH keys.");
                 break;
             }
 
             var itemsDictionary = new Dictionary<string, Item>();
-            foreach (var item in items)
+            foreach (var item in items.Data)
             {
                 itemsDictionary.Add(item.GetDisplayName(), item);
             }
@@ -151,7 +152,7 @@ try
             }
 
             var selectedItemObjects = new List<Item>();
-            foreach (string selectedItem in selectedItems)
+            foreach (var selectedItem in selectedItems)
             {
                 selectedItemObjects.Add(itemsDictionary[selectedItem]);
             }
@@ -160,14 +161,14 @@ try
             {
                 var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
 
-                if (anyPublicKeysNeedExport is null)
+                if (anyPublicKeysNeedExport.Success == false)
                 {
                     AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
-                    AnsiConsole.WriteLine(opManager.LastError);
+                    AnsiConsole.WriteLine(anyPublicKeysNeedExport.ErrorMessage);
                     Environment.Exit(1);
                 }
 
-                if (anyPublicKeysNeedExport == true)
+                if (anyPublicKeysNeedExport.Data == true)
                 {
                     foreach (var selectedItemObject in selectedItemObjects)
                     {
