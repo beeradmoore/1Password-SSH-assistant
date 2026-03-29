@@ -4,6 +4,9 @@ namespace SSHAssistantFor1Password.Core.Data;
 
 public class Item
 {
+    public const string DefaultUsername = "UPDATE_USERNAME_HERE";
+    public const string DefaultHost = "UPDATE_HOST_NAME_HERE";
+
 	[JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
 
@@ -41,10 +44,10 @@ public class Item
     public bool NeedsExport { get; set; } = false;
 
     [JsonIgnore]
-    public string Username { get; set; } = "UPDATE_USERNAME_HERE";
+    public string Username { get; set; } = DefaultUsername;
 
     [JsonIgnore]
-    public string Host { get; set; } = "UPDATE_HOST_NAME_HERE";
+    public string Host { get; set; } = DefaultHost;
 
     public string GetDisplayName()
     {

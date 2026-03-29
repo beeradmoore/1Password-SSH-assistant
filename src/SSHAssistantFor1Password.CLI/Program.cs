@@ -80,7 +80,7 @@ try
         var vaults = await opManager.LoadVaultsAsync(selectedAccount);
         if (vaults.Success == false || vaults.Data is null || vaults.Data.Count == 0)
         {
-            AnsiConsole.MarkupLine("[red]Error: Could not list vaules.[/]");
+            AnsiConsole.MarkupLine("[red]Error: Could not list vaults.[/]");
             AnsiConsole.WriteLine(vaults.ErrorMessage);
             Environment.Exit(1);
         }
@@ -157,6 +157,18 @@ try
                 selectedItemObjects.Add(itemsDictionary[selectedItem]);
             }
 
+            // Create SSH directory if it does not exist.
+            if (Directory.Exists(opManager.GetSSHPath()) == false)
+            {
+                Directory.CreateDirectory(opManager.GetSSHPath());
+
+                // Create SSH config if it does not exist.
+                if (File.Exists(opManager.GetSSHConfigPath()))
+                {
+                    File.WriteAllText(opManager.GetSSHConfigPath(), string.Empty);
+                }
+            }
+
             if (File.Exists(opManager.GetSSHConfigPath()))
             {
                 var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
@@ -168,42 +180,95 @@ try
                     Environment.Exit(1);
                 }
 
-                if (anyPublicKeysNeedExport.Data == true)
+                foreach (var selectedItemObject in selectedItemObjects)
+                {
+                    if (selectedItemObject.NeedsExport)
+                    {
+                        AnsiConsole.MarkupLine($"[green]Export public key for {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}[/]");
+                    }
+                }
+
+                var exportPublicKeys = AnsiConsole.Confirm("Export public keys?");
+                if (exportPublicKeys)
                 {
                     foreach (var selectedItemObject in selectedItemObjects)
                     {
                         if (selectedItemObject.NeedsExport)
                         {
-                            AnsiConsole.MarkupLine($"[green]Export public key for {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}[/]");
-                        }
-                    }
-
-                    var exportPublicKeys = AnsiConsole.Confirm("Export public keys?");
-                    if (exportPublicKeys)
-                    {
-                        foreach (var selectedItemObject in selectedItemObjects)
-                        {
-                            if (selectedItemObject.NeedsExport)
+                            try
                             {
-                                try
-                                {
-                                    File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
-                                }
-                                catch (Exception err)
-                                {
-                                    Debugger.Break();
-                                    AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
-                                }
+                                File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
+                            }
+                            catch (Exception err)
+                            {
+                                Debugger.Break();
+                                AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
                             }
                         }
                     }
                 }
-                else
+            }
+            else
+            {
+                AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
+            }
+
+
+            var showManualInstructions = true;
+
+            var updateConfigs = AnsiConsole.Confirm("Would you like SSH Assistant for 1Password to update your SSH config and agent.toml files?");
+            if (updateConfigs)
+            {
+                foreach (var storedItemObject in selectedItemObjects)
                 {
-                    AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
+                    // Try to prefill host and username
+                    if (storedItemObject.Username == Item.DefaultUsername)
+                    {
+                        if (storedItemObject.Title.Contains("bitbucket", StringComparison.OrdinalIgnoreCase) ||
+                            storedItemObject.Title.Contains("github", StringComparison.OrdinalIgnoreCase))
+                        {
+                            storedItemObject.Username = "git";
+                        }
+                    }
+
+                    if (storedItemObject.Host == Item.DefaultHost)
+                    {
+                        if (storedItemObject.Title.Contains("bitbucket", StringComparison.OrdinalIgnoreCase))
+                        {
+                            storedItemObject.Host = "bitbucket.org";
+                        }
+                        else if (storedItemObject.Title.Contains("github", StringComparison.OrdinalIgnoreCase))
+                        {
+                            storedItemObject.Host = "github.com";
+                        }
+                    }
+
+                    storedItemObject.Host = AnsiConsole.Ask<string>($"SSH host for {storedItemObject.Title} {Markup.Escape($"[{storedItemObject.Host}]")}?", storedItemObject.Host);
+                    storedItemObject.Username = AnsiConsole.Ask<string>($"SSH username for {storedItemObject.Title} {Markup.Escape($"[{storedItemObject.Username}]")}?", storedItemObject.Username);
+                    Console.WriteLine();
                 }
 
                 var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
+                var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
+
+                try
+                {
+                    File.AppendAllText(opManager.GetSSHConfigPath(), sshConfig);
+                    File.AppendAllText(opManager.GetAgentTomlPath(), agentToml);
+                    showManualInstructions = false;
+                    AnsiConsole.MarkupLine($"[green]SSH config has been exported and agent.toml has been updated.[/]");
+
+                }
+                catch (Exception err)
+                {
+                    AnsiConsole.MarkupLine($"[red]Error: Could not append configs automatically. You will need to update them manually. ({err.Message})[/]");
+                }
+            }
+
+            if (showManualInstructions)
+            {
+                var sshConfig = opManager.GenerateUpdatedSSHConfig(selectedAccount, selectedVault, selectedItemObjects);
+                var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
 
                 Console.WriteLine("\n\n");
                 Console.WriteLine("The following config needs to appended to:");
@@ -214,22 +279,14 @@ try
                 Console.WriteLine("\n");
                 Console.WriteLine(sshConfig);
                 Console.WriteLine("\n\n");
+
+                Console.WriteLine();
+                Console.WriteLine("The following config needs to appended to:");
+                Console.WriteLine(opManager.GetAgentTomlPath());
+                Console.WriteLine("\n\n");
+                Console.WriteLine(agentToml);
+                Console.WriteLine("\n\n");
             }
-            else
-            {
-                AnsiConsole.Markup("[red]SSH directory does not exist. Skipping public key generation.[/]");
-            }
-
-            var agentToml = opManager.GenerateUpdatedAgentToml(selectedAccount, selectedVault, selectedItemObjects);
-
-            Console.WriteLine();
-            Console.WriteLine("The following config needs to appended to:");
-            Console.WriteLine(opManager.GetAgentTomlPath());
-            Console.WriteLine("\n\n");
-            Console.WriteLine(agentToml);
-            Console.WriteLine("\n\n");
-
-
 
             Environment.Exit(0);
 
