@@ -15,8 +15,8 @@ if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false &&
 }
 
 var opManager = new OPManager();
-var opCLIResult = await opManager.CheckFor1PasswordCLIAsync();
-if (opCLIResult.Success == false || opCLIResult.Data != true)
+var checkFor1PasswordResult = await opManager.CheckFor1PasswordCLIAsync();
+if (checkFor1PasswordResult.Success == false || checkFor1PasswordResult.Data != true)
 {
     Console.WriteLine("1Password CLI could not be found. Please ensure it is installed and enabled by following the instructions here, https://developer.1password.com/docs/cli/get-started/");
     Debugger.Break();

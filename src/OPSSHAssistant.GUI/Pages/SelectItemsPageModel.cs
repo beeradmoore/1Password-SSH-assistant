@@ -14,12 +14,12 @@ public partial class SelectItemsPageModel : ObservableObject
     readonly Account _account;
     readonly Vault _vault;
     readonly List<CheckboxItem> _items = new List<CheckboxItem>();
-    
+
     public ObservableCollection<CheckboxItem> Items { get; } = new ObservableCollection<CheckboxItem>();
 
     [ObservableProperty]
     bool _isLoading = false;
-    
+
     [ObservableProperty]
     bool _isError = false;
 
@@ -31,15 +31,15 @@ public partial class SelectItemsPageModel : ObservableObject
 
     [ObservableProperty]
     string _searchText = string.Empty;
-    
+
     [ObservableProperty]
     CheckboxItem? _selectedItem = null;
 
     [ObservableProperty]
     bool _goToNextPageEnabled = false;
-    
+
     public string NextButtonText { get; private set; } = string.Empty;
-    
+
     public SelectItemsPageModel(SelectItemsPage page, MenuMode mode, Account account, Vault vault)
     {
         _page = new WeakReference<SelectItemsPage>(page);
@@ -54,12 +54,12 @@ public partial class SelectItemsPageModel : ObservableObject
             _ => throw new Exception("Unknown mode for SelectItemsPageModel"),
         };
     }
-    
+
     internal async Task LoadItemsAsync()
     {
         _items.Clear();
         Items.Clear();
-        
+
         SelectedItem = null;
 
         IsError = false;
@@ -69,7 +69,7 @@ public partial class SelectItemsPageModel : ObservableObject
 
         IsLoading = false;
 
-        if (loadedItems is null || loadedItems.Count == 0)
+        if (loadedItems.Success == false is null || loadedItems.Count == 0)
         {
             if (_page.TryGetTarget(out SelectItemsPage? selectItemsPage))
             {
@@ -91,7 +91,7 @@ public partial class SelectItemsPageModel : ObservableObject
 
         FilterItems(string.Empty);
     }
-    
+
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
@@ -109,7 +109,7 @@ public partial class SelectItemsPageModel : ObservableObject
 
             SelectedItem.IsChecked = !SelectedItem.IsChecked;
             SelectedItem = null;
-            
+
             GoToNextPageEnabled = Items.Any(i => i.IsChecked);
         }
     }
@@ -184,7 +184,7 @@ public partial class SelectItemsPageModel : ObservableObject
                 }
                 else
                 {
-                    throw new Exception("Unknown mode for SelectItemsPageModel");    
+                    throw new Exception("Unknown mode for SelectItemsPageModel");
                 }
             });
         }

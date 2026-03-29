@@ -22,12 +22,13 @@ public partial class MainPageModel : ObservableObject
     {
         _page = new WeakReference<MainPage>(page);
     }
-    
+
     internal async Task CheckFor1PasswordAsync()
     {
         if (_page.TryGetTarget(out MainPage? mainPage))
         {
-            if (await App.OPManager.CheckFor1PasswordCLIAsync())
+            var checkFor1PasswordResult = await App.OPManager.CheckFor1PasswordCLIAsync();
+            if (checkFor1PasswordResult.Success == true && checkFor1PasswordResult.Data == true)
             {
                 await mainPage.Dispatcher.DispatchAsync(async () =>
                 {
@@ -75,7 +76,7 @@ public partial class MainPageModel : ObservableObject
 
             var newItem = SelectedItem;
             SelectedItem = null;
-            
+
             if (newItem.Mode == MenuMode.ExportPPK || newItem.Mode == MenuMode.ExportPubAppendSSHConfigAndAgentToml)
             {
                 if (_page.TryGetTarget(out MainPage? mainPage))
