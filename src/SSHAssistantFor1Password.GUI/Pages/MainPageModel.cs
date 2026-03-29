@@ -1,0 +1,93 @@
+using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using SSHAssistantFor1Password.Core.Data;
+using SSHAssistantFor1Password.Core.Enums;
+
+namespace SSHAssistantFor1Password.GUI.Pages;
+
+public partial class MainPageModel : ObservableObject
+{
+    readonly WeakReference<MainPage> _page;
+
+    public List<MenuOption> MenuOptions { get; set; } = new List<MenuOption>
+    {
+        new MenuOption(MenuMode.ExportPPK),
+        new MenuOption(MenuMode.ExportPubAppendSSHConfigAndAgentToml),
+    };
+
+    [ObservableProperty]
+    public partial MenuOption? SelectedItem { get; set; }
+
+    public MainPageModel(MainPage page)
+    {
+        _page = new WeakReference<MainPage>(page);
+    }
+
+    internal async Task CheckFor1PasswordAsync()
+    {
+        if (_page.TryGetTarget(out MainPage? mainPage))
+        {
+            var checkFor1PasswordResult = await App.OPManager.CheckFor1PasswordCLIAsync();
+            if (checkFor1PasswordResult.Success == true && checkFor1PasswordResult.Data == true)
+            {
+                await mainPage.Dispatcher.DispatchAsync(async () =>
+                {
+                    var alertResponse = await mainPage.DisplayAlertAsync(string.Empty, "This tool will use the 1Password CLI to list accounts, vaults, and items. You will be prompted to authorise access multiple times in this process.\n\nAre you sure you want to continue?", "Yes", "Quit");
+                    if (alertResponse == false)
+                    {
+                        Environment.Exit(1);
+                        return;
+                    }
+
+                    if (Directory.Exists(App.OPManager.GetSSHPath()) == false)
+                    {
+                        await mainPage.DisplayAlertAsync("Warning", $"SSH directory ({App.OPManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.", "Ok");
+                    }
+
+                    //await GoToStage1();
+                });
+            }
+            else
+            {
+                await mainPage.Dispatcher.DispatchAsync(async () =>
+                {
+                    var alertResponse = await mainPage.DisplayAlertAsync("Error", "1Password CLI could not be found. Please ensure it is installed and enabled by following the instructions here,", "Get help", "Close");
+                    if (alertResponse)
+                    {
+                        await Launcher.OpenAsync("https://developer.1password.com/docs/cli/get-started/");
+                    }
+
+                    Environment.Exit(1);
+                });
+            }
+        }
+    }
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+
+        if (e.PropertyName == nameof(SelectedItem))
+        {
+            if (SelectedItem is null)
+            {
+                return;
+            }
+
+            var newItem = SelectedItem;
+            SelectedItem = null;
+
+            if (newItem.Mode == MenuMode.ExportPPK || newItem.Mode == MenuMode.ExportPubAppendSSHConfigAndAgentToml)
+            {
+                if (_page.TryGetTarget(out MainPage? mainPage))
+                {
+                    mainPage.Navigation.PushAsync(new SelectAccountPage(newItem.Mode));
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+    }
+}
