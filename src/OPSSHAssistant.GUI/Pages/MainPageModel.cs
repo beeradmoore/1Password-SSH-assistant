@@ -32,7 +32,7 @@ public partial class MainPageModel : ObservableObject
             {
                 await mainPage.Dispatcher.DispatchAsync(async () =>
                 {
-                    var alertResponse = await mainPage.DisplayAlert(string.Empty, "This tool will use the 1Password CLI to list accounts, vaults, and items. You will be prompted to authorise access multiple times in this process.\n\nAre you sure you want to continue?", "Yes", "Quit");
+                    var alertResponse = await mainPage.DisplayAlertAsync(string.Empty, "This tool will use the 1Password CLI to list accounts, vaults, and items. You will be prompted to authorise access multiple times in this process.\n\nAre you sure you want to continue?", "Yes", "Quit");
                     if (alertResponse == false)
                     {
                         Environment.Exit(1);
@@ -41,7 +41,7 @@ public partial class MainPageModel : ObservableObject
 
                     if (Directory.Exists(App.OPManager.GetSSHPath()) == false)
                     {
-                        await mainPage.DisplayAlert("Warning", $"SSH directory ({App.OPManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.", "Ok");
+                        await mainPage.DisplayAlertAsync("Warning", $"SSH directory ({App.OPManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.", "Ok");
                     }
 
                     //await GoToStage1();
@@ -51,7 +51,7 @@ public partial class MainPageModel : ObservableObject
             {
                 await mainPage.Dispatcher.DispatchAsync(async () =>
                 {
-                    var alertResponse = await mainPage.DisplayAlert("Error", "1Password CLI could not be found. Please ensure it is installed and enabled by following the instructions here,", "Get help", "Close");
+                    var alertResponse = await mainPage.DisplayAlertAsync("Error", "1Password CLI could not be found. Please ensure it is installed and enabled by following the instructions here,", "Get help", "Close");
                     if (alertResponse)
                     {
                         await Launcher.OpenAsync("https://developer.1password.com/docs/cli/get-started/");

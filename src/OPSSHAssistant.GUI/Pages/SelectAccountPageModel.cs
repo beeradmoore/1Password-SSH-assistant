@@ -70,7 +70,7 @@ public partial class SelectAccountPageModel : ObservableObject
             {
                 await page.Dispatcher.DispatchAsync(async () =>
                 {
-                    await page.DisplayAlert("Error", $"Could not list accounts.\n{result.ErrorMessage}", "Okay");
+                    await page.DisplayAlertAsync("Error", $"Could not list accounts.\n{result.ErrorMessage}", "Okay");
                 });
 
                 IsError = true;
@@ -86,7 +86,7 @@ public partial class SelectAccountPageModel : ObservableObject
             {
                 await page.Dispatcher.DispatchAsync(async () =>
                 {
-                    await page.DisplayAlert("Error", $"Could not list accounts.", "Okay");
+                    await page.DisplayAlertAsync("Error", $"Could not list accounts.", "Okay");
                 });
             }
 

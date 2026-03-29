@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,10 +16,10 @@ public partial class PreviewPemTomlChangesPageModel : ObservableObject
     readonly Vault _vault;
     readonly List<Item> _items;
     PreparedExport? _preparedExport;
-    
+
     [ObservableProperty]
     bool _isLoading = false;
-    
+
     [ObservableProperty]
     bool _isError = false;
 
@@ -33,10 +34,10 @@ public partial class PreviewPemTomlChangesPageModel : ObservableObject
 
     [ObservableProperty]
     string _sshAgentConfigText = string.Empty;
-    
+
     [ObservableProperty]
-    bool _goToNextPageEnabled = false; 
-    
+    bool _goToNextPageEnabled = false;
+
     public PreviewPemTomlChangesPageModel(PreviewPemTomlChangesPage page, MenuMode mode, Account account, Vault vault, List<Item> items)
     {
         _page = new WeakReference<PreviewPemTomlChangesPage>(page);
@@ -49,18 +50,18 @@ public partial class PreviewPemTomlChangesPageModel : ObservableObject
     public async Task GenerateOutputAsync()
     {
         IsLoading = true;
-        
+
         _preparedExport = await App.OPManager.PrepareExportAsync(_account, _vault, _items);
-        
+
         if (_preparedExport.Success == false)
         {
             IsLoading = false;
-            
+
             if (_page.TryGetTarget(out PreviewPemTomlChangesPage? page))
             {
                 await page.Dispatcher.DispatchAsync(async () =>
                 {
-                    await page.DisplayAlert("Error", $"{_preparedExport.ErrorMessage}.\n{_preparedExport.ErrorMessageDetails}.", "Okay");
+                    await page.DisplayAlertAsync("Error", $"{_preparedExport.ErrorMessage}.\n{_preparedExport.ErrorMessageDetails}.", "Okay");
                 });
             }
 
@@ -68,7 +69,7 @@ public partial class PreviewPemTomlChangesPageModel : ObservableObject
             ErrorText = _preparedExport.ErrorMessage;
             return;
         }
-        
+
         var publicKeysExportStringBuilder = new StringBuilder();
         var sshConfigStringBuilder = new StringBuilder();
         var sshAgentConfigStringBuilder = new StringBuilder();
@@ -79,16 +80,16 @@ public partial class PreviewPemTomlChangesPageModel : ObservableObject
             publicKeysExportStringBuilder.AppendLine("The following public keys need to be exported:");
             foreach (var selectedItemObject in _preparedExport.PublicKeysToExport)
             {
-                publicKeysExportStringBuilder.AppendLine($"- {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
+                publicKeysExportStringBuilder.AppendLine(CultureInfo.InvariantCulture, $"- {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}");
             }
         }
         else
         {
             publicKeysExportStringBuilder.AppendLine("No public keys need to be exported.");
         }
-        
-        
-        
+
+
+
         if (_preparedExport.SSHConfigToBeCreated)
         {
             sshConfigStringBuilder.AppendLine("The following config will be created:");

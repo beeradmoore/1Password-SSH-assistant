@@ -16,13 +16,13 @@ public partial class SelectVaultPageModel : ObservableObject
 
     readonly List<Vault> _vaults = new List<Vault>();
     public ObservableCollection<Vault> Vaults { get; } = new ObservableCollection<Vault>();
-    
+
     [ObservableProperty]
     Vault? _selectedVault = null;
-    
+
     [ObservableProperty]
     bool _isLoading = false;
-    
+
     [ObservableProperty]
     bool _isError = false;
 
@@ -34,19 +34,19 @@ public partial class SelectVaultPageModel : ObservableObject
 
     [ObservableProperty]
     string _searchText = string.Empty;
-    
+
     public SelectVaultPageModel(SelectVaultPage page, MenuMode mode, Account account)
     {
         _page = new WeakReference<SelectVaultPage>(page);
         _mode = mode;
         _account = account;
     }
-    
+
     internal async Task LoadVaultsAsync()
     {
         _vaults.Clear();
         Vaults.Clear();
-        
+
         SelectedVault = null;
 
         IsError = false;
@@ -56,13 +56,13 @@ public partial class SelectVaultPageModel : ObservableObject
 
         IsLoading = false;
 
-        if (loadedVaults is null || loadedVaults.Count == 0)
+        if (loadedVaults.Success || loadedVaults.Data is null || loadedVaults.Data.Count == 0)
         {
-            if (_page.TryGetTarget(out SelectVaultPage? selectedVaultPage))
+            if (_page.TryGetTarget(out var selectedVaultPage))
             {
                 await selectedVaultPage.Dispatcher.DispatchAsync(async () =>
                 {
-                    await selectedVaultPage.DisplayAlert("Error", $"Could not list vaults.\n{App.OPManager.LastError}", "Okay");
+                    await selectedVaultPage.DisplayAlertAsync("Error", $"Could not list vaults.\n{loadedVaults.ErrorMessage}", "Okay");
                 });
 
                 IsError = true;
@@ -71,7 +71,7 @@ public partial class SelectVaultPageModel : ObservableObject
             return;
         }
 
-        _vaults.AddRange(loadedVaults);
+        _vaults.AddRange(loadedVaults.Data);
 
         FilterVaults(string.Empty);
     }

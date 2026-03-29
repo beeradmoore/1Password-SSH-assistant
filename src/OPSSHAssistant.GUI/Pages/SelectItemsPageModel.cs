@@ -69,13 +69,13 @@ public partial class SelectItemsPageModel : ObservableObject
 
         IsLoading = false;
 
-        if (loadedItems.Success == false is null || loadedItems.Count == 0)
+        if (loadedItems.Success == false || loadedItems.Data is null || loadedItems.Data.Count == 0)
         {
-            if (_page.TryGetTarget(out SelectItemsPage? selectItemsPage))
+            if (_page.TryGetTarget(out var selectItemsPage))
             {
                 await selectItemsPage.Dispatcher.DispatchAsync(async () =>
                 {
-                    await selectItemsPage.DisplayAlert("Error", $"Could not list items.\n{App.OPManager.LastError}", "Okay");
+                    await selectItemsPage.DisplayAlertAsync("Error", $"Could not list items.\n{loadedItems.ErrorMessage}", "Okay");
                 });
 
                 IsError = true;
@@ -84,7 +84,7 @@ public partial class SelectItemsPageModel : ObservableObject
             return;
         }
 
-        foreach (var item in loadedItems)
+        foreach (var item in loadedItems.Data)
         {
             _items.Add(new CheckboxItem(item));
         }
@@ -170,7 +170,7 @@ public partial class SelectItemsPageModel : ObservableObject
                 var selectedItems = _items.Where(x => x.IsChecked).Select(x => x.Item).ToList();
                 if (selectedItems.Count == 0)
                 {
-                    await page.DisplayAlert("Error", "No items selected.", "Okay");
+                    await page.DisplayAlertAsync("Error", "No items selected.", "Okay");
                     return;
                 }
 
