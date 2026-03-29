@@ -1,2 +1,3 @@
-# 1Password-SSH-generator
-Generates configs for use in ~/.ssh/config and agent.toml
+# SSH Assistant for 1Password
+
+Generates configs for SSH keys in 1Password to be used in ~/.ssh/config and agent.toml
