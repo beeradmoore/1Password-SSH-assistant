@@ -35,11 +35,43 @@ if (response == "Quit")
 }
 
 
-if (Directory.Exists(opManager.GetSSHPath()) == false)
+try
+{
+    // Create SSH directory if it does not exist.
+    if (Directory.Exists(opManager.GetSSHPath()) == false)
+    {
+        Directory.CreateDirectory(opManager.GetSSHPath());
+
+        // Create SSH config if it does not exist.
+        if (File.Exists(opManager.GetSSHConfigPath()))
+        {
+            File.WriteAllText(opManager.GetSSHConfigPath(), string.Empty);
+        }
+    }
+}
+catch (Exception )
 {
     AnsiConsoleHelper.DisplayErrorAndContinue($"SSH directory ({opManager.GetSSHPath()}) does not exist. SSH pathing needs to be configured for public key generation to work.");
 }
 
+try
+{
+// Create directory for agent.toml does not exist.
+    if (Directory.Exists(opManager.GetAgentTomlDirectory()) == false)
+    {
+        Directory.CreateDirectory(opManager.GetAgentTomlDirectory());
+
+        // Create agent.toml if it does not exist.
+        if (File.Exists(opManager.GetAgentTomlPath()))
+        {
+            File.WriteAllText(opManager.GetAgentTomlPath(), string.Empty);
+        }
+    }
+}
+catch (Exception )
+{
+    AnsiConsoleHelper.DisplayErrorAndContinue($"Agent.toml file ({opManager.GetAgentTomlPath()}) does not exist. This file needs to be configured for public key generation to work.");
+}
 
 try
 {
@@ -169,48 +201,54 @@ try
                 }
             }
 
-            if (File.Exists(opManager.GetSSHConfigPath()))
+
+            // Create directory for agent.toml does not exist.
+            if (Directory.Exists(opManager.GetAgentTomlDirectory()) == false)
             {
-                var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
+                Directory.CreateDirectory(opManager.GetAgentTomlDirectory());
 
-                if (anyPublicKeysNeedExport.Success == false)
+                // Create agent.toml if it does not exist.
+                if (File.Exists(opManager.GetAgentTomlPath()))
                 {
-                    AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
-                    AnsiConsole.WriteLine(anyPublicKeysNeedExport.ErrorMessage);
-                    Environment.Exit(1);
+                    File.WriteAllText(opManager.GetAgentTomlPath(), string.Empty);
                 }
+            }
 
+            var anyPublicKeysNeedExport = await opManager.LoadPublicKeysToExportAsync(selectedAccount, selectedVault, selectedItemObjects);
+
+            if (anyPublicKeysNeedExport.Success == false)
+            {
+                AnsiConsole.MarkupLine("[red]Error: Could determine public keys to export.[/]");
+                AnsiConsole.WriteLine(anyPublicKeysNeedExport.ErrorMessage);
+                Environment.Exit(1);
+            }
+
+            foreach (var selectedItemObject in selectedItemObjects)
+            {
+                if (selectedItemObject.NeedsExport)
+                {
+                    AnsiConsole.MarkupLine($"[green]Export public key for {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}[/]");
+                }
+            }
+
+            var exportPublicKeys = AnsiConsole.Confirm("Export public keys?");
+            if (exportPublicKeys)
+            {
                 foreach (var selectedItemObject in selectedItemObjects)
                 {
                     if (selectedItemObject.NeedsExport)
                     {
-                        AnsiConsole.MarkupLine($"[green]Export public key for {selectedItemObject.Title} as {Path.GetFileName(selectedItemObject.PublicKeyPath)}[/]");
-                    }
-                }
-
-                var exportPublicKeys = AnsiConsole.Confirm("Export public keys?");
-                if (exportPublicKeys)
-                {
-                    foreach (var selectedItemObject in selectedItemObjects)
-                    {
-                        if (selectedItemObject.NeedsExport)
+                        try
                         {
-                            try
-                            {
-                                File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
-                            }
-                            catch (Exception err)
-                            {
-                                Debugger.Break();
-                                AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
-                            }
+                            File.WriteAllText(selectedItemObject.PublicKeyPath, selectedItemObject.PublicKey);
+                        }
+                        catch (Exception err)
+                        {
+                            Debugger.Break();
+                            AnsiConsole.MarkupLine($"[red]Error: Could not export {selectedItemObject.PublicKeyPath}. ({err.Message})[/]");
                         }
                     }
                 }
-            }
-            else
-            {
-                AnsiConsole.MarkupLine($"[green]No public keys needed exporting. Skipping.[/]");
             }
 
 
@@ -243,8 +281,8 @@ try
                         }
                     }
 
-                    storedItemObject.Host = AnsiConsole.Ask<string>($"SSH host for {storedItemObject.Title} {Markup.Escape($"[{storedItemObject.Host}]")}?", storedItemObject.Host);
-                    storedItemObject.Username = AnsiConsole.Ask<string>($"SSH username for {storedItemObject.Title} {Markup.Escape($"[{storedItemObject.Username}]")}?", storedItemObject.Username);
+                    storedItemObject.Host = AnsiConsole.Ask<string>($"SSH host for {storedItemObject.Title}?", storedItemObject.Host);
+                    storedItemObject.Username = AnsiConsole.Ask<string>($"SSH username for {storedItemObject.Title}?", storedItemObject.Username);
                     Console.WriteLine();
                 }
 
