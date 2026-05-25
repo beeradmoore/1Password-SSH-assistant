@@ -291,8 +291,8 @@ try
 
                 try
                 {
-                    File.AppendAllText(opManager.GetSSHConfigPath(), sshConfig);
-                    File.AppendAllText(opManager.GetAgentTomlPath(), agentToml);
+                    File.AppendAllText(opManager.GetSSHConfigPath(), "\n\n" + sshConfig);
+                    File.AppendAllText(opManager.GetAgentTomlPath(), "\n\n" + agentToml);
                     showManualInstructions = false;
                     AnsiConsole.MarkupLine($"[green]SSH config has been exported and agent.toml has been updated.[/]");
 
